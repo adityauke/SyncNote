@@ -1,0 +1,1812 @@
+{
+  "$schema": "./task-planner.schema.json",
+  "meta": {
+    "project": "Real-Time Collaborative Document Editor",
+    "side": "server",
+    "stack": "ASP.NET Core Web API + SignalR + EF Core + SQL Server + Redis + Ollama",
+    "sourceDocument": "Prd.md",
+    "version": "1.0.0",
+    "generatedOn": "2026-08-17",
+    "idPrefix": "SRV",
+    "companionPlan": "tasks.client.json",
+    "conventions": {
+      "status": ["not-started", "in-progress", "blocked", "in-review", "done"],
+      "priority": ["P0", "P1", "P2", "P3"],
+      "priorityMeaning": {
+        "P0": "MVP blocker - nothing usable without it",
+        "P1": "MVP scope per PRD section 52",
+        "P2": "Post-MVP, planned",
+        "P3": "Optional / stretch"
+      },
+      "dependsOn": "Task IDs inside this file that must be 'done' before this task starts",
+      "dependsOnClient": "Task IDs in tasks.client.json needed for end-to-end verification only (not for coding this task)",
+      "estimateHours": "Solo-developer focused hours, excluding review/rework",
+      "mvp": "true = included in PRD section 52 MVP definition"
+    }
+  },
+  "phases": [
+    { "id": "P0", "name": "Foundation & Infrastructure", "goal": "Solution skeleton, cross-cutting concerns, local infra running", "prdRefs": ["47", "50"] },
+    { "id": "P1", "name": "Authentication & Users", "goal": "JWT auth with refresh rotation and profile management", "prdRefs": ["7", "41"] },
+    { "id": "P2", "name": "Document Management", "goal": "Document CRUD, listing, lifecycle and resource authorization", "prdRefs": ["8", "9", "39"] },
+    { "id": "P3", "name": "Document State & Autosave", "goal": "Yjs update persistence, snapshots and debounced batch writes", "prdRefs": ["16", "20"] },
+    { "id": "P4", "name": "Real-Time Collaboration", "goal": "DocumentHub, update relay, presence, awareness", "prdRefs": ["11", "13", "14", "40"] },
+    { "id": "P5", "name": "Distributed State (Redis)", "goal": "Backplane, distributed locks, temporary collaboration state", "prdRefs": ["15", "38", "46"] },
+    { "id": "P6", "name": "Sharing, Invitations & Permissions", "goal": "Members, invitations, share links, enforced role matrix", "prdRefs": ["24", "25", "26", "27", "28"] },
+    { "id": "P7", "name": "Comments & Mentions", "goal": "Threaded comments, resolve flow, mentions and notifications", "prdRefs": ["22", "23"] },
+    { "id": "P8", "name": "Versioning & Revision History", "goal": "Versions, snapshots, history, restore and compare", "prdRefs": ["18", "19", "20"] },
+    { "id": "P9", "name": "Document Locking", "goal": "Soft and hard locks with expiry and live events", "prdRefs": ["29"] },
+    { "id": "P10", "name": "AI Assistant", "goal": "Ollama-backed writing operations exposed as authorized API", "prdRefs": ["30", "31", "32", "33", "34"] },
+    { "id": "P11", "name": "AI RAG (Optional)", "goal": "Chunking, embeddings, Qdrant retrieval, document Q&A", "prdRefs": ["35"] },
+    { "id": "P12", "name": "Notifications & Audit", "goal": "Notification delivery, audit trail, administration", "prdRefs": ["36", "43"] },
+    { "id": "P13", "name": "Production Engineering", "goal": "Collaboration test suite, load testing, scaling, hardening, Docker", "prdRefs": ["44", "45", "46", "47"] }
+  ],
+  "modules": [
+    "Infrastructure", "Authentication", "UserManagement", "DocumentManagement",
+    "DocumentState", "RealTimeCollaboration", "Presence", "DistributedState",
+    "SharingPermissions", "Invitations", "Comments", "Versioning", "Locking",
+    "AIAssistant", "RAG", "Notifications", "AuditLogs", "Administration", "Testing", "DevOps"
+  ],
+  "milestones": [
+    { "id": "M1", "name": "Backend boots with auth", "phase": "P1", "exitCriteria": "Register/login/refresh/logout work against SQL Server; Swagger authorized calls succeed", "completesTasks": ["SRV-021"] },
+    { "id": "M2", "name": "Document API complete", "phase": "P2", "exitCriteria": "All /api/documents endpoints pass integration tests with resource authorization", "completesTasks": ["SRV-032"] },
+    { "id": "M3", "name": "Real-time editing works", "phase": "P4", "exitCriteria": "Two hub clients exchange Yjs updates and awareness; state persists and reloads", "completesTasks": ["SRV-046"] },
+    { "id": "M4", "name": "Collaboration hardened", "phase": "P6", "exitCriteria": "Permissions enforced on REST and hub; invitations and share links functional", "completesTasks": ["SRV-059"] },
+    { "id": "M5", "name": "MVP backend complete", "phase": "P10", "exitCriteria": "Comments, versioning, offline resync and AI Phase 1 endpoints delivered", "completesTasks": ["SRV-084"] },
+    { "id": "M6", "name": "Production ready", "phase": "P13", "exitCriteria": "9 critical collaboration scenarios pass; load target met; Docker image published", "completesTasks": ["SRV-099"] }
+  ],
+  "criticalPath": [
+    "SRV-001", "SRV-004", "SRV-010", "SRV-012", "SRV-015", "SRV-022", "SRV-024",
+    "SRV-031", "SRV-034", "SRV-038", "SRV-039", "SRV-040", "SRV-043", "SRV-035",
+    "SRV-057", "SRV-068", "SRV-081", "SRV-094"
+  ],
+  "tasks": [
+    {
+      "id": "SRV-001",
+      "title": "Create solution and layered project structure",
+      "module": "Infrastructure",
+      "phase": "P0",
+      "priority": "P0",
+      "mvp": true,
+      "estimateHours": 3,
+      "prdRefs": ["50"],
+      "description": "Create the .NET solution with Api, Application, Domain, Infrastructure and Tests projects and wire project references following the layering rule (Api -> Application -> Domain, Infrastructure -> Application/Domain).",
+      "dependsOn": [],
+      "deliverables": ["CollabDocs.sln", "src/Api", "src/Application", "src/Domain", "src/Infrastructure", "tests/"],
+      "acceptanceCriteria": [
+        "Solution builds with zero warnings on a clean clone",
+        "Domain project has no outbound project references",
+        "Api exposes a temporary /ping endpoint returning 200"
+      ]
+    },
+    {
+      "id": "SRV-002",
+      "title": "Configuration and strongly typed options",
+      "module": "Infrastructure",
+      "phase": "P0",
+      "priority": "P0",
+      "mvp": true,
+      "estimateHours": 3,
+      "prdRefs": ["50"],
+      "description": "Set up appsettings per environment, user-secrets for local dev, and options classes for Jwt, ConnectionStrings, Redis, Ollama, Cors and Persistence settings with validation on start.",
+      "dependsOn": ["SRV-001"],
+      "deliverables": ["appsettings.json", "appsettings.Development.json", "Options/*.cs", "ServiceCollection extension AddAppOptions"],
+      "acceptanceCriteria": [
+        "Missing or invalid required option fails fast at startup with a clear message",
+        "No secrets are committed to source control"
+      ]
+    },
+    {
+      "id": "SRV-003",
+      "title": "Docker Compose for local infrastructure",
+      "module": "DevOps",
+      "phase": "P0",
+      "priority": "P0",
+      "mvp": true,
+      "estimateHours": 4,
+      "prdRefs": ["47"],
+      "description": "Compose file with sqlserver, redis, ollama and qdrant services including named volumes, healthchecks and a pull/warm step for the chosen local model.",
+      "dependsOn": [],
+      "deliverables": ["docker-compose.infra.yml", ".env.example", "docs/local-setup.md"],
+      "acceptanceCriteria": [
+        "docker compose up brings all four services to healthy",
+        "SQL Server and Redis are reachable from the host on documented ports",
+        "Ollama responds to /api/tags with the pulled model present"
+      ]
+    },
+    {
+      "id": "SRV-004",
+      "title": "EF Core DbContext and initial migration pipeline",
+      "module": "Infrastructure",
+      "phase": "P0",
+      "priority": "P0",
+      "mvp": true,
+      "estimateHours": 4,
+      "prdRefs": ["36", "50"],
+      "description": "Add AppDbContext in Infrastructure/Persistence, configure SQL Server provider, entity configuration assembly scanning, and a migration + database update workflow script.",
+      "dependsOn": ["SRV-002", "SRV-003"],
+      "deliverables": ["AppDbContext.cs", "Persistence/Configurations/", "scripts/migrate.ps1"],
+      "acceptanceCriteria": [
+        "dotnet ef migrations add works from the repository root",
+        "Database is created and reachable by the API at startup",
+        "Design-time factory allows migrations without running the API"
+      ]
+    },
+    {
+      "id": "SRV-005",
+      "title": "Global exception handling and standard response envelope",
+      "module": "Infrastructure",
+      "phase": "P0",
+      "priority": "P0",
+      "mvp": true,
+      "estimateHours": 4,
+      "prdRefs": ["42"],
+      "description": "Implement exception-handling middleware mapping domain/validation/authorization exceptions to the standard { success, message, code } contract, plus a shared ApiResponse<T> wrapper and an error code catalogue.",
+      "dependsOn": ["SRV-001"],
+      "deliverables": ["ExceptionHandlingMiddleware.cs", "ApiResponse.cs", "ErrorCodes.cs"],
+      "acceptanceCriteria": [
+        "Unhandled exceptions return 500 with a generic message and a correlation id, never a stack trace",
+        "Validation failures return 400 with field-level details and code VALIDATION_ERROR",
+        "Permission failures return 403 with code DOCUMENT_ACCESS_DENIED"
+      ]
+    },
+    {
+      "id": "SRV-006",
+      "title": "Structured logging and correlation ids",
+      "module": "Infrastructure",
+      "phase": "P0",
+      "priority": "P1",
+      "mvp": true,
+      "estimateHours": 3,
+      "prdRefs": ["43"],
+      "description": "Configure Serilog with console + rolling file sinks, request logging enrichment, correlation id per request and per hub connection, and a redaction policy for sensitive values.",
+      "dependsOn": ["SRV-005"],
+      "deliverables": ["Serilog configuration", "CorrelationIdMiddleware.cs", "LogEvents.cs"],
+      "acceptanceCriteria": [
+        "Every log line carries CorrelationId, UserId (when authenticated) and DocumentId (when applicable)",
+        "Passwords, JWTs and invitation tokens never appear in any sink",
+        "Log level is configurable per namespace without a rebuild"
+      ]
+    },
+    {
+      "id": "SRV-007",
+      "title": "CORS, rate limiting and security headers",
+      "module": "Infrastructure",
+      "phase": "P0",
+      "priority": "P1",
+      "mvp": true,
+      "estimateHours": 3,
+      "prdRefs": ["41"],
+      "description": "Configure a named CORS policy for the React origin with credentials, ASP.NET Core rate limiting partitioned by user/IP with stricter buckets for auth and AI routes, and standard security headers.",
+      "dependsOn": ["SRV-002"],
+      "deliverables": ["CorsExtensions.cs", "RateLimitingExtensions.cs", "SecurityHeadersMiddleware.cs"],
+      "acceptanceCriteria": [
+        "SignalR negotiate succeeds from the configured frontend origin",
+        "Exceeding the auth bucket returns 429 with Retry-After",
+        "Unlisted origins are rejected"
+      ]
+    },
+    {
+      "id": "SRV-008",
+      "title": "Health checks and readiness endpoints",
+      "module": "Infrastructure",
+      "phase": "P0",
+      "priority": "P2",
+      "mvp": false,
+      "estimateHours": 2,
+      "prdRefs": ["47"],
+      "description": "Add /health/live and /health/ready with checks for SQL Server, Redis and Ollama so containers and load balancers can gate traffic.",
+      "dependsOn": ["SRV-004"],
+      "deliverables": ["HealthCheckExtensions.cs"],
+      "acceptanceCriteria": [
+        "Readiness reports Unhealthy when SQL Server or Redis is down",
+        "Liveness stays Healthy while dependencies are degraded"
+      ]
+    },
+    {
+      "id": "SRV-009",
+      "title": "OpenAPI/Swagger with JWT support",
+      "module": "Infrastructure",
+      "phase": "P0",
+      "priority": "P1",
+      "mvp": true,
+      "estimateHours": 2,
+      "prdRefs": ["39"],
+      "description": "Enable Swagger UI in development with bearer auth definition, XML comments and grouped endpoints so the frontend can generate typed clients.",
+      "dependsOn": ["SRV-001"],
+      "deliverables": ["SwaggerExtensions.cs", "generated swagger.json"],
+      "acceptanceCriteria": [
+        "Authorize button attaches the bearer token to try-it-out calls",
+        "swagger.json can be exported for client type generation"
+      ]
+    },
+    {
+      "id": "SRV-010",
+      "title": "User and RefreshToken domain entities",
+      "module": "Authentication",
+      "phase": "P1",
+      "priority": "P0",
+      "mvp": true,
+      "estimateHours": 3,
+      "prdRefs": ["36", "37"],
+      "description": "Define User (Id, Email, DisplayName, PasswordHash, AvatarUrl, CreatedAt, IsActive) and RefreshToken (Id, UserId, TokenHash, ExpiresAt, RevokedAt, ReplacedByTokenId, CreatedByIp) plus EF configurations and a migration.",
+      "dependsOn": ["SRV-004"],
+      "deliverables": ["Domain/Entities/User.cs", "Domain/Entities/RefreshToken.cs", "Migration AddIdentityTables"],
+      "acceptanceCriteria": [
+        "Email has a unique index and is stored case-insensitively",
+        "RefreshToken cascades on user delete",
+        "Migration applies cleanly to an empty database"
+      ]
+    },
+    {
+      "id": "SRV-011",
+      "title": "Password hashing service",
+      "module": "Authentication",
+      "phase": "P1",
+      "priority": "P0",
+      "mvp": true,
+      "estimateHours": 2,
+      "prdRefs": ["7", "41"],
+      "description": "Implement IPasswordHasher using a memory-hard algorithm with per-user salt and configurable work factor, plus a needs-rehash check for future upgrades.",
+      "dependsOn": ["SRV-010"],
+      "deliverables": ["IPasswordHasher.cs", "PasswordHasher.cs"],
+      "acceptanceCriteria": [
+        "Two hashes of the same password differ",
+        "Verification is constant-time",
+        "Raising the work factor marks old hashes as needing rehash"
+      ]
+    },
+    {
+      "id": "SRV-012",
+      "title": "JWT access token service",
+      "module": "Authentication",
+      "phase": "P1",
+      "priority": "P0",
+      "mvp": true,
+      "estimateHours": 3,
+      "prdRefs": ["7", "41"],
+      "description": "Generate signed access tokens carrying sub, email, display name and jti with a short configurable lifetime; register JwtBearer authentication with strict validation parameters.",
+      "dependsOn": ["SRV-010", "SRV-002"],
+      "deliverables": ["ITokenService.cs", "JwtTokenService.cs", "AuthenticationExtensions.cs"],
+      "acceptanceCriteria": [
+        "Expired or tampered tokens are rejected with 401",
+        "Clock skew is set to zero so expiry tests are deterministic",
+        "Token lifetime is driven by configuration"
+      ]
+    },
+    {
+      "id": "SRV-013",
+      "title": "Refresh token issue, rotation and revocation",
+      "module": "Authentication",
+      "phase": "P1",
+      "priority": "P0",
+      "mvp": true,
+      "estimateHours": 4,
+      "prdRefs": ["7", "41"],
+      "description": "Issue cryptographically random refresh tokens stored hashed, rotate on every use, revoke the previous token, and detect reuse of a revoked token by revoking the whole token family.",
+      "dependsOn": ["SRV-012", "SRV-011"],
+      "deliverables": ["IRefreshTokenService.cs", "RefreshTokenService.cs"],
+      "acceptanceCriteria": [
+        "Raw refresh tokens are never persisted, only hashes",
+        "Reusing a rotated token revokes the entire chain and returns 401",
+        "Expired refresh tokens are rejected and cleaned up by a background sweep"
+      ]
+    },
+    {
+      "id": "SRV-014",
+      "title": "POST /api/auth/register",
+      "module": "Authentication",
+      "phase": "P1",
+      "priority": "P0",
+      "mvp": true,
+      "estimateHours": 3,
+      "prdRefs": ["7", "39"],
+      "description": "Register a user with email uniqueness check, password policy enforcement, hashed storage and immediate token issuance.",
+      "dependsOn": ["SRV-011", "SRV-013", "SRV-020"],
+      "deliverables": ["AuthController.Register", "RegisterRequest/Response DTOs"],
+      "acceptanceCriteria": [
+        "Duplicate email returns 409 with code EMAIL_ALREADY_REGISTERED",
+        "Successful registration returns access token, refresh token and user profile",
+        "Weak passwords are rejected with field-level messages"
+      ]
+    },
+    {
+      "id": "SRV-015",
+      "title": "POST /api/auth/login",
+      "module": "Authentication",
+      "phase": "P1",
+      "priority": "P0",
+      "mvp": true,
+      "estimateHours": 2,
+      "prdRefs": ["7", "39"],
+      "description": "Authenticate by email and password, issue access + refresh tokens, and log the login event.",
+      "dependsOn": ["SRV-014"],
+      "deliverables": ["AuthController.Login", "LoginRequest/Response DTOs"],
+      "acceptanceCriteria": [
+        "Invalid credentials return a generic 401 that does not reveal whether the email exists",
+        "Inactive users cannot log in",
+        "Login is recorded in the log stream without credentials"
+      ]
+    },
+    {
+      "id": "SRV-016",
+      "title": "POST /api/auth/refresh",
+      "module": "Authentication",
+      "phase": "P1",
+      "priority": "P0",
+      "mvp": true,
+      "estimateHours": 2,
+      "prdRefs": ["7", "39"],
+      "description": "Exchange a valid refresh token for a new access + refresh token pair using the rotation service.",
+      "dependsOn": ["SRV-013", "SRV-015"],
+      "deliverables": ["AuthController.Refresh"],
+      "acceptanceCriteria": [
+        "Endpoint is anonymous but requires a valid refresh token",
+        "Returns 401 with code REFRESH_TOKEN_INVALID for revoked or expired tokens"
+      ]
+    },
+    {
+      "id": "SRV-017",
+      "title": "POST /api/auth/logout",
+      "module": "Authentication",
+      "phase": "P1",
+      "priority": "P0",
+      "mvp": true,
+      "estimateHours": 2,
+      "prdRefs": ["7", "39"],
+      "description": "Revoke the presented refresh token (and optionally all sessions for the user) and drop related presence/session entries.",
+      "dependsOn": ["SRV-016"],
+      "deliverables": ["AuthController.Logout"],
+      "acceptanceCriteria": [
+        "After logout the refresh token cannot be used",
+        "Logout is idempotent and returns 200 for an already-revoked token"
+      ]
+    },
+    {
+      "id": "SRV-018",
+      "title": "Authorization policy foundation and current-user accessor",
+      "module": "Authentication",
+      "phase": "P1",
+      "priority": "P0",
+      "mvp": true,
+      "estimateHours": 3,
+      "prdRefs": ["27", "41"],
+      "description": "Add ICurrentUser abstraction resolved from claims, a base policy registry, and helper attributes so controllers and hubs share one identity model.",
+      "dependsOn": ["SRV-012"],
+      "deliverables": ["ICurrentUser.cs", "CurrentUser.cs", "AuthorizationPolicies.cs"],
+      "acceptanceCriteria": [
+        "ICurrentUser resolves the same user id in controllers, hubs and background-invoked services",
+        "Anonymous access to a protected endpoint returns 401, not 500"
+      ]
+    },
+    {
+      "id": "SRV-019",
+      "title": "User profile and change password endpoints",
+      "module": "UserManagement",
+      "phase": "P1",
+      "priority": "P1",
+      "mvp": true,
+      "estimateHours": 3,
+      "prdRefs": ["7"],
+      "description": "GET /api/users/me, PUT /api/users/me (display name, avatar) and POST /api/users/me/change-password with current-password verification and refresh-token revocation on change.",
+      "dependsOn": ["SRV-018", "SRV-013"],
+      "deliverables": ["UsersController", "UpdateProfileRequest", "ChangePasswordRequest"],
+      "acceptanceCriteria": [
+        "Changing the password revokes all other active refresh tokens",
+        "Wrong current password returns 400 with code CURRENT_PASSWORD_INVALID"
+      ]
+    },
+    {
+      "id": "SRV-020",
+      "title": "Request validation with FluentValidation",
+      "module": "Infrastructure",
+      "phase": "P1",
+      "priority": "P0",
+      "mvp": true,
+      "estimateHours": 3,
+      "prdRefs": ["41", "42"],
+      "description": "Wire FluentValidation into the pipeline, add validators for auth DTOs, and map failures to the standard error envelope.",
+      "dependsOn": ["SRV-005"],
+      "deliverables": ["Application/Validators/", "ValidationExtensions.cs"],
+      "acceptanceCriteria": [
+        "Invalid payloads never reach controller bodies",
+        "Errors are returned as a field -> messages dictionary inside the standard envelope"
+      ]
+    },
+    {
+      "id": "SRV-021",
+      "title": "Authentication unit and integration tests",
+      "module": "Testing",
+      "phase": "P1",
+      "priority": "P0",
+      "mvp": true,
+      "estimateHours": 6,
+      "prdRefs": ["44"],
+      "description": "xUnit tests for hashing, token generation and rotation, plus WebApplicationFactory integration tests covering the register/login/refresh/logout flows against a test database.",
+      "dependsOn": ["SRV-017", "SRV-019"],
+      "deliverables": ["Tests/Unit/Auth/", "Tests/Integration/AuthEndpointsTests.cs", "CustomWebApplicationFactory.cs"],
+      "acceptanceCriteria": [
+        "Full auth happy path and 6 failure paths are covered",
+        "Refresh-token reuse detection has a dedicated test",
+        "Test run needs no manual database setup"
+      ]
+    },
+    {
+      "id": "SRV-022",
+      "title": "Document and DocumentMember entities",
+      "module": "DocumentManagement",
+      "phase": "P2",
+      "priority": "P0",
+      "mvp": true,
+      "estimateHours": 3,
+      "prdRefs": ["9", "27", "36", "37"],
+      "description": "Define Document (Id, Title, OwnerId, Status, CreatedAt, UpdatedAt, CurrentVersion, DeletedAt) and DocumentMember (DocumentId, UserId, Role, AddedBy, AddedAt), plus DocumentRole and DocumentStatus enums.",
+      "dependsOn": ["SRV-010"],
+      "deliverables": ["Domain/Entities/Document.cs", "Domain/Entities/DocumentMember.cs", "Domain/Enums/DocumentRole.cs", "Domain/Enums/DocumentStatus.cs"],
+      "acceptanceCriteria": [
+        "DocumentMember has a composite unique key on (DocumentId, UserId)",
+        "Status supports Active, Archived and Deleted",
+        "Owner is represented both by Document.OwnerId and an Owner member row"
+      ]
+    },
+    {
+      "id": "SRV-023",
+      "title": "Document persistence configuration and migration",
+      "module": "DocumentManagement",
+      "phase": "P2",
+      "priority": "P0",
+      "mvp": true,
+      "estimateHours": 3,
+      "prdRefs": ["36", "37"],
+      "description": "EF configurations with indexes for owner lookups, updated-at sorting and title search, plus a global query filter for soft-deleted documents.",
+      "dependsOn": ["SRV-022"],
+      "deliverables": ["DocumentConfiguration.cs", "DocumentMemberConfiguration.cs", "Migration AddDocumentTables"],
+      "acceptanceCriteria": [
+        "Soft-deleted documents are excluded from queries by default",
+        "Index exists on (OwnerId, UpdatedAt desc)",
+        "Migration applies and rolls back cleanly"
+      ]
+    },
+    {
+      "id": "SRV-024",
+      "title": "Document application service",
+      "module": "DocumentManagement",
+      "phase": "P2",
+      "priority": "P0",
+      "mvp": true,
+      "estimateHours": 5,
+      "prdRefs": ["9"],
+      "description": "IDocumentService encapsulating create, get, update, archive, restore, soft delete and duplicate with owner-membership bootstrapping and UpdatedAt maintenance.",
+      "dependsOn": ["SRV-023", "SRV-018"],
+      "deliverables": ["IDocumentService.cs", "DocumentService.cs", "Document DTOs"],
+      "acceptanceCriteria": [
+        "Creating a document also creates the Owner DocumentMember row in the same transaction",
+        "All mutations touch UpdatedAt",
+        "Service never returns entities directly, only DTOs"
+      ]
+    },
+    {
+      "id": "SRV-025",
+      "title": "GET /api/documents with search, sort, filter and paging",
+      "module": "DocumentManagement",
+      "phase": "P2",
+      "priority": "P0",
+      "mvp": true,
+      "estimateHours": 5,
+      "prdRefs": ["8", "39"],
+      "description": "List documents the caller owns or is a member of, with query params for search text, sort (updated/created/title), scope (all/mine/shared/recent/archived) and pagination.",
+      "dependsOn": ["SRV-024"],
+      "deliverables": ["DocumentsController.List", "DocumentListQuery", "PagedResult<T>"],
+      "acceptanceCriteria": [
+        "Results include the caller's role per document and last-edited timestamp",
+        "Documents the caller has no membership in are never returned",
+        "Paging metadata (page, size, total) is returned"
+      ]
+    },
+    {
+      "id": "SRV-026",
+      "title": "POST /api/documents",
+      "module": "DocumentManagement",
+      "phase": "P2",
+      "priority": "P0",
+      "mvp": true,
+      "estimateHours": 2,
+      "prdRefs": ["9", "39"],
+      "description": "Create a document defaulting the title to 'Untitled Document', initialise CurrentVersion to 1 and emit the initial version record hook.",
+      "dependsOn": ["SRV-024"],
+      "deliverables": ["DocumentsController.Create"],
+      "acceptanceCriteria": [
+        "Returns 201 with Location header and the created document DTO",
+        "Caller becomes Owner",
+        "Empty title falls back to the default"
+      ]
+    },
+    {
+      "id": "SRV-027",
+      "title": "GET /api/documents/{id}",
+      "module": "DocumentManagement",
+      "phase": "P2",
+      "priority": "P0",
+      "mvp": true,
+      "estimateHours": 2,
+      "prdRefs": ["9", "39"],
+      "description": "Fetch a single document with metadata, caller role, member count and current version; authorized through the document access policy.",
+      "dependsOn": ["SRV-024", "SRV-031"],
+      "deliverables": ["DocumentsController.GetById"],
+      "acceptanceCriteria": [
+        "Non-members receive 404 rather than 403 to avoid id enumeration",
+        "Archived documents are still readable by members"
+      ]
+    },
+    {
+      "id": "SRV-028",
+      "title": "PUT /api/documents/{id} (rename / metadata update)",
+      "module": "DocumentManagement",
+      "phase": "P2",
+      "priority": "P0",
+      "mvp": true,
+      "estimateHours": 2,
+      "prdRefs": ["9", "39"],
+      "description": "Update title and metadata for callers with Editor or Owner role, broadcasting the change to connected clients once the hub exists.",
+      "dependsOn": ["SRV-027"],
+      "deliverables": ["DocumentsController.Update"],
+      "acceptanceCriteria": [
+        "Viewer and Commenter receive 403 with code DOCUMENT_ACCESS_DENIED",
+        "Title length is validated"
+      ]
+    },
+    {
+      "id": "SRV-029",
+      "title": "Archive, soft delete and restore endpoints",
+      "module": "DocumentManagement",
+      "phase": "P2",
+      "priority": "P1",
+      "mvp": true,
+      "estimateHours": 3,
+      "prdRefs": ["8", "9", "39"],
+      "description": "DELETE /api/documents/{id} (soft), POST /{id}/archive, POST /{id}/restore with Owner-only authorization and cascade behaviour for members and live sessions.",
+      "dependsOn": ["SRV-028"],
+      "deliverables": ["DocumentsController.Delete/Archive/Restore"],
+      "acceptanceCriteria": [
+        "Only the Owner can delete or archive",
+        "Deleted documents disappear from all listings but remain restorable",
+        "Restoring returns the document to Active status"
+      ]
+    },
+    {
+      "id": "SRV-030",
+      "title": "POST /api/documents/{id}/duplicate",
+      "module": "DocumentManagement",
+      "phase": "P2",
+      "priority": "P1",
+      "mvp": true,
+      "estimateHours": 3,
+      "prdRefs": ["8", "9", "39"],
+      "description": "Copy document metadata and the latest content snapshot into a new document owned by the caller, without copying members, comments or history.",
+      "dependsOn": ["SRV-029", "SRV-034"],
+      "deliverables": ["DocumentsController.Duplicate"],
+      "acceptanceCriteria": [
+        "New document title is 'Copy of {title}'",
+        "Content of the duplicate matches the source at duplication time",
+        "Members and comments are not carried over"
+      ]
+    },
+    {
+      "id": "SRV-031",
+      "title": "Document resource authorization handler",
+      "module": "SharingPermissions",
+      "phase": "P2",
+      "priority": "P0",
+      "mvp": true,
+      "estimateHours": 5,
+      "prdRefs": ["27", "41"],
+      "description": "Implement resource-based authorization (CanView, CanComment, CanEdit, CanManage) resolving the caller's effective role from ownership, membership or an active share link, with a short-lived cache.",
+      "dependsOn": ["SRV-024", "SRV-018"],
+      "deliverables": ["DocumentAccessRequirement.cs", "DocumentAuthorizationHandler.cs", "IDocumentAccessService.cs"],
+      "acceptanceCriteria": [
+        "One code path serves both controllers and the hub",
+        "Role -> operation matrix from PRD section 27 is enforced exactly",
+        "Cache invalidates immediately when a membership row changes"
+      ]
+    },
+    {
+      "id": "SRV-032",
+      "title": "Document CRUD and authorization tests",
+      "module": "Testing",
+      "phase": "P2",
+      "priority": "P0",
+      "mvp": true,
+      "estimateHours": 6,
+      "prdRefs": ["44"],
+      "description": "Integration tests across all document endpoints for each role, plus negative tests for non-members and deleted documents.",
+      "dependsOn": ["SRV-030", "SRV-031"],
+      "deliverables": ["Tests/Integration/DocumentEndpointsTests.cs", "Tests/Unit/DocumentAuthorizationTests.cs"],
+      "acceptanceCriteria": [
+        "Every endpoint has a test per role (Owner, Editor, Commenter, Viewer, non-member)",
+        "Soft delete and restore round trip is covered"
+      ]
+    },
+    {
+      "id": "SRV-033",
+      "title": "Document content storage model",
+      "module": "DocumentState",
+      "phase": "P3",
+      "priority": "P0",
+      "mvp": true,
+      "estimateHours": 4,
+      "prdRefs": ["16", "20", "36"],
+      "description": "Define DocumentSnapshot (Id, DocumentId, StateVector, YDocState varbinary, CreatedAt, UpdateSeq) and DocumentChange (Id, DocumentId, UserId, UpdateBlob, Seq, CreatedAt) with configurations and migration.",
+      "dependsOn": ["SRV-023"],
+      "deliverables": ["DocumentSnapshot.cs", "DocumentChange.cs", "Migration AddDocumentStateTables"],
+      "acceptanceCriteria": [
+        "Binary columns use varbinary(max) with no length truncation",
+        "Seq is monotonic per document and indexed",
+        "Snapshot rows reference the seq they compact up to"
+      ]
+    },
+    {
+      "id": "SRV-034",
+      "title": "Yjs state repository (load and append)",
+      "module": "DocumentState",
+      "phase": "P3",
+      "priority": "P0",
+      "mvp": true,
+      "estimateHours": 6,
+      "prdRefs": ["12", "16", "20"],
+      "description": "Repository that loads latest snapshot + subsequent updates for a document, appends new updates, and exposes a GET /api/documents/{id}/state endpoint returning the merged initial payload for a joining client.",
+      "dependsOn": ["SRV-033", "SRV-031"],
+      "deliverables": ["IDocumentStateRepository.cs", "DocumentStateRepository.cs", "DocumentsController.GetState"],
+      "acceptanceCriteria": [
+        "A client joining an existing document reconstructs identical content",
+        "Load cost is bounded by snapshot + delta count, not total document history",
+        "Server treats update payloads as opaque binary and never parses CRDT internals"
+      ]
+    },
+    {
+      "id": "SRV-035",
+      "title": "Debounced batch persistence BackgroundService",
+      "module": "DocumentState",
+      "phase": "P3",
+      "priority": "P0",
+      "mvp": true,
+      "estimateHours": 7,
+      "prdRefs": ["16"],
+      "description": "Buffer incoming Yjs updates in memory/Redis per document and flush to SQL Server on a debounce window plus a max-buffer threshold, with flush-on-last-user-leave and flush-on-shutdown.",
+      "dependsOn": ["SRV-034", "SRV-040"],
+      "deliverables": ["DocumentPersistenceService.cs (BackgroundService)", "IUpdateBuffer.cs", "PersistenceOptions"],
+      "acceptanceCriteria": [
+        "Sustained typing by 5 users produces batched writes, not one write per keystroke",
+        "No update is lost across a graceful shutdown",
+        "Debounce interval and max batch size are configurable"
+      ]
+    },
+    {
+      "id": "SRV-036",
+      "title": "Snapshot creation and compaction job",
+      "module": "DocumentState",
+      "phase": "P3",
+      "priority": "P1",
+      "mvp": true,
+      "estimateHours": 6,
+      "prdRefs": ["20"],
+      "description": "Periodic job that merges accumulated updates into a new snapshot when the delta count or byte size crosses a threshold, then prunes compacted change rows beyond a retention window.",
+      "dependsOn": ["SRV-035"],
+      "deliverables": ["SnapshotCompactionService.cs", "SnapshotOptions"],
+      "acceptanceCriteria": [
+        "Document reconstructed from a new snapshot is byte-identical in content to the pre-compaction state",
+        "Change rows older than the retention window and covered by a snapshot are removed",
+        "Compaction never runs concurrently for the same document"
+      ]
+    },
+    {
+      "id": "SRV-037",
+      "title": "Document state integrity tests",
+      "module": "Testing",
+      "phase": "P3",
+      "priority": "P1",
+      "mvp": true,
+      "estimateHours": 4,
+      "prdRefs": ["44", "45"],
+      "description": "Tests covering append/load round trips, compaction correctness, and buffer flush behaviour under simulated churn.",
+      "dependsOn": ["SRV-036"],
+      "deliverables": ["Tests/Integration/DocumentStateTests.cs"],
+      "acceptanceCriteria": [
+        "Replaying 1000 buffered updates yields the same state as an equivalent snapshot",
+        "Shutdown mid-buffer loses nothing"
+      ]
+    },
+    {
+      "id": "SRV-038",
+      "title": "SignalR setup with JWT authentication",
+      "module": "RealTimeCollaboration",
+      "phase": "P4",
+      "priority": "P0",
+      "mvp": true,
+      "estimateHours": 4,
+      "prdRefs": ["13", "40", "41"],
+      "description": "Register SignalR, map /hubs/document, and support token delivery via access_token query string for the WebSocket handshake while keeping the standard header path for other transports.",
+      "dependsOn": ["SRV-018", "SRV-007"],
+      "deliverables": ["SignalRExtensions.cs", "JwtBearerEvents.OnMessageReceived hook", "Hubs/DocumentHub.cs skeleton"],
+      "acceptanceCriteria": [
+        "Unauthenticated connections are rejected at negotiate",
+        "Context.User carries the same claims as REST requests",
+        "MessagePack or JSON protocol choice is documented and configured"
+      ]
+    },
+    {
+      "id": "SRV-039",
+      "title": "DocumentHub JoinDocument / LeaveDocument",
+      "module": "RealTimeCollaboration",
+      "phase": "P4",
+      "priority": "P0",
+      "mvp": true,
+      "estimateHours": 5,
+      "prdRefs": ["13", "40"],
+      "description": "Group-per-document join with access authorization, initial state handshake, connection registration, and clean leave/disconnect handling.",
+      "dependsOn": ["SRV-038", "SRV-031", "SRV-034"],
+      "deliverables": ["DocumentHub.JoinDocument", "DocumentHub.LeaveDocument", "DocumentHub.OnDisconnectedAsync"],
+      "acceptanceCriteria": [
+        "Joining without access throws a hub exception mapped to DOCUMENT_ACCESS_DENIED",
+        "Abrupt disconnect removes the connection from groups and presence within the configured timeout",
+        "Join returns the caller's effective role so the client can render read-only UI"
+      ]
+    },
+    {
+      "id": "SRV-040",
+      "title": "SendDocumentUpdate and DocumentChanged relay",
+      "module": "RealTimeCollaboration",
+      "phase": "P4",
+      "priority": "P0",
+      "mvp": true,
+      "estimateHours": 5,
+      "prdRefs": ["11", "13", "40"],
+      "description": "Accept binary Yjs updates from editors, validate edit permission, enqueue for persistence, and broadcast to all other group members with a monotonic sequence number.",
+      "dependsOn": ["SRV-039"],
+      "deliverables": ["DocumentHub.SendDocumentUpdate", "DocumentChanged event contract"],
+      "acceptanceCriteria": [
+        "Sender does not receive its own echo",
+        "Viewers and Commenters attempting to send updates are rejected and logged",
+        "Oversized payloads are rejected with a clear error code"
+      ]
+    },
+    {
+      "id": "SRV-041",
+      "title": "Awareness, cursor and selection relay",
+      "module": "Presence",
+      "phase": "P4",
+      "priority": "P0",
+      "mvp": true,
+      "estimateHours": 4,
+      "prdRefs": ["13", "14", "40"],
+      "description": "Hub methods SendAwarenessUpdate, SendCursorUpdate and SendSelectionUpdate broadcasting AwarenessChanged / CursorChanged / SelectionChanged; ephemeral only, never persisted to SQL Server.",
+      "dependsOn": ["SRV-039"],
+      "deliverables": ["DocumentHub awareness methods", "Awareness event contracts"],
+      "acceptanceCriteria": [
+        "Awareness payloads never reach SQL Server",
+        "Updates are throttled server-side to protect against cursor spam",
+        "Viewers may broadcast presence but not content updates"
+      ]
+    },
+    {
+      "id": "SRV-042",
+      "title": "Connection and session tracking",
+      "module": "Presence",
+      "phase": "P4",
+      "priority": "P0",
+      "mvp": true,
+      "estimateHours": 4,
+      "prdRefs": ["14", "38"],
+      "description": "Track connectionId -> (userId, documentId) with support for multiple tabs per user, backed by an abstraction that starts in-memory and swaps to Redis in P5.",
+      "dependsOn": ["SRV-039"],
+      "deliverables": ["IConnectionRegistry.cs", "InMemoryConnectionRegistry.cs"],
+      "acceptanceCriteria": [
+        "A user with two tabs appears once in presence but has two tracked connections",
+        "Registry entries are removed on disconnect and by a stale-entry sweep"
+      ]
+    },
+    {
+      "id": "SRV-043",
+      "title": "Presence service and UserJoined / UserLeft / PresenceChanged events",
+      "module": "Presence",
+      "phase": "P4",
+      "priority": "P0",
+      "mvp": true,
+      "estimateHours": 5,
+      "prdRefs": ["14", "40"],
+      "description": "Maintain per-document presence records (userId, name, avatar, activity, lastActiveAt) and broadcast join/leave/activity changes; expose a hub method to fetch the current roster on join.",
+      "dependsOn": ["SRV-042", "SRV-041"],
+      "deliverables": ["IPresenceService.cs", "PresenceService.cs", "PresenceDto"],
+      "acceptanceCriteria": [
+        "Joining client receives the full current roster in one call",
+        "Activity distinguishes Editing from Viewing based on role and recent updates",
+        "Presence is stored outside SQL Server per PRD section 14"
+      ]
+    },
+    {
+      "id": "SRV-044",
+      "title": "Hub error handling, throttling and payload limits",
+      "module": "RealTimeCollaboration",
+      "phase": "P4",
+      "priority": "P1",
+      "mvp": true,
+      "estimateHours": 4,
+      "prdRefs": ["41", "42", "46"],
+      "description": "Hub filter translating exceptions into the standard error contract, per-connection message rate limits, max message size, and keep-alive/timeout tuning.",
+      "dependsOn": ["SRV-040"],
+      "deliverables": ["HubExceptionFilter.cs", "HubRateLimitFilter.cs", "SignalR options tuning"],
+      "acceptanceCriteria": [
+        "Hub exceptions reach the client as { message, code } without leaking internals",
+        "A flooding connection is throttled rather than taking down the hub",
+        "Keep-alive and client timeout values are documented"
+      ]
+    },
+    {
+      "id": "SRV-045",
+      "title": "Reconnection resync endpoint",
+      "module": "RealTimeCollaboration",
+      "phase": "P4",
+      "priority": "P0",
+      "mvp": true,
+      "estimateHours": 5,
+      "prdRefs": ["17", "46"],
+      "description": "Allow a reconnecting client to send its state vector and receive the missing diff, so offline edits merge without a full document reload.",
+      "dependsOn": ["SRV-040", "SRV-034"],
+      "deliverables": ["DocumentHub.SyncFromStateVector", "Diff computation in state repository"],
+      "acceptanceCriteria": [
+        "A client offline for 10 minutes resyncs with a diff, not a full document",
+        "Client-queued offline updates applied after reconnect are broadcast to others",
+        "No update is lost when reconnect races with an active edit"
+      ]
+    },
+    {
+      "id": "SRV-046",
+      "title": "Real-time collaboration integration tests",
+      "module": "Testing",
+      "phase": "P4",
+      "priority": "P0",
+      "mvp": true,
+      "estimateHours": 8,
+      "prdRefs": ["44", "45"],
+      "description": "Multi-client hub tests using in-process SignalR clients covering join, concurrent updates, presence lifecycle and reconnect resync.",
+      "dependsOn": ["SRV-045", "SRV-043"],
+      "deliverables": ["Tests/Integration/DocumentHubTests.cs", "HubTestHarness.cs"],
+      "acceptanceCriteria": [
+        "Two clients editing concurrently converge to the same state",
+        "Disconnect removes the user from presence for the remaining client",
+        "Tests run deterministically in CI without sleeps"
+      ]
+    },
+    {
+      "id": "SRV-047",
+      "title": "Redis connection and abstraction layer",
+      "module": "DistributedState",
+      "phase": "P5",
+      "priority": "P1",
+      "mvp": false,
+      "estimateHours": 3,
+      "prdRefs": ["38"],
+      "description": "Register a shared multiplexer with resilient connect options and expose typed helpers for hashes, sets and pub/sub used by presence and locks.",
+      "dependsOn": ["SRV-003", "SRV-002"],
+      "deliverables": ["IRedisConnection.cs", "RedisExtensions.cs"],
+      "acceptanceCriteria": [
+        "API starts in a degraded but functional mode when Redis is briefly unavailable",
+        "Connection is reused, not created per request"
+      ]
+    },
+    {
+      "id": "SRV-048",
+      "title": "SignalR Redis backplane",
+      "module": "DistributedState",
+      "phase": "P5",
+      "priority": "P1",
+      "mvp": false,
+      "estimateHours": 4,
+      "prdRefs": ["38", "46"],
+      "description": "Add the Redis backplane so hub broadcasts fan out across multiple API instances, with a channel prefix per environment.",
+      "dependsOn": ["SRV-047", "SRV-044"],
+      "deliverables": ["AddStackExchangeRedis configuration"],
+      "acceptanceCriteria": [
+        "Two API instances behind a proxy relay updates between clients connected to different instances",
+        "Environments do not cross-talk on shared Redis"
+      ]
+    },
+    {
+      "id": "SRV-049",
+      "title": "Redis-backed presence and connection registry",
+      "module": "DistributedState",
+      "phase": "P5",
+      "priority": "P1",
+      "mvp": false,
+      "estimateHours": 5,
+      "prdRefs": ["14", "38"],
+      "description": "Swap the in-memory registry and presence store for Redis hashes with TTL heartbeats and a sweeper for orphaned entries after instance crashes.",
+      "dependsOn": ["SRV-048", "SRV-043"],
+      "deliverables": ["RedisConnectionRegistry.cs", "RedisPresenceStore.cs", "PresenceSweeperService.cs"],
+      "acceptanceCriteria": [
+        "Killing an API instance clears its presence entries within the TTL window",
+        "Presence roster is consistent across instances"
+      ]
+    },
+    {
+      "id": "SRV-050",
+      "title": "Distributed locks",
+      "module": "DistributedState",
+      "phase": "P5",
+      "priority": "P1",
+      "mvp": false,
+      "estimateHours": 4,
+      "prdRefs": ["29", "38"],
+      "description": "Redis-based distributed lock primitive with owner token, TTL and safe release, used by snapshot compaction, version creation and document hard locks.",
+      "dependsOn": ["SRV-047"],
+      "deliverables": ["IDistributedLockService.cs", "RedisDistributedLock.cs"],
+      "acceptanceCriteria": [
+        "Only the lock owner can release it",
+        "Locks auto-expire so a crashed holder cannot deadlock a document",
+        "Compaction and version creation acquire the lock before writing"
+      ]
+    },
+    {
+      "id": "SRV-051",
+      "title": "Document members endpoints",
+      "module": "SharingPermissions",
+      "phase": "P6",
+      "priority": "P0",
+      "mvp": true,
+      "estimateHours": 4,
+      "prdRefs": ["24", "27", "39"],
+      "description": "GET/POST/PUT/DELETE for /api/documents/{id}/members with Owner-only mutation, self-removal support and last-owner protection.",
+      "dependsOn": ["SRV-031", "SRV-024"],
+      "deliverables": ["DocumentMembersController"],
+      "acceptanceCriteria": [
+        "The last remaining Owner cannot be demoted or removed",
+        "Adding an existing member updates the role instead of duplicating",
+        "Non-owners get 403 on mutations"
+      ]
+    },
+    {
+      "id": "SRV-052",
+      "title": "DocumentInvitations entity and migration",
+      "module": "Invitations",
+      "phase": "P6",
+      "priority": "P0",
+      "mvp": true,
+      "estimateHours": 3,
+      "prdRefs": ["26", "36"],
+      "description": "Create the DocumentInvitations table with Id, DocumentId, InvitedBy, Email, Role, TokenHash, ExpiresAt, AcceptedAt, CreatedAt and appropriate indexes.",
+      "dependsOn": ["SRV-023"],
+      "deliverables": ["DocumentInvitation.cs", "Migration AddDocumentInvitations"],
+      "acceptanceCriteria": [
+        "TokenHash has a unique index",
+        "Composite index on (DocumentId, Email) supports duplicate-invite checks"
+      ]
+    },
+    {
+      "id": "SRV-053",
+      "title": "Secure invitation token generation and validation",
+      "module": "Invitations",
+      "phase": "P6",
+      "priority": "P0",
+      "mvp": true,
+      "estimateHours": 3,
+      "prdRefs": ["26", "41"],
+      "description": "Generate cryptographically random tokens, store only their hash, validate with constant-time comparison, and enforce expiry plus single-use semantics.",
+      "dependsOn": ["SRV-052"],
+      "deliverables": ["IInvitationTokenService.cs", "InvitationTokenService.cs"],
+      "acceptanceCriteria": [
+        "Raw token is returned exactly once, at creation",
+        "Accepted or expired tokens fail validation",
+        "Token entropy is at least 256 bits"
+      ]
+    },
+    {
+      "id": "SRV-054",
+      "title": "POST /api/documents/{id}/invitations",
+      "module": "Invitations",
+      "phase": "P6",
+      "priority": "P0",
+      "mvp": true,
+      "estimateHours": 4,
+      "prdRefs": ["25", "39"],
+      "description": "Owner invites by email: if the user exists create the DocumentMember and notify directly; otherwise create an invitation with a token link.",
+      "dependsOn": ["SRV-053", "SRV-051"],
+      "deliverables": ["InvitationsController.Create", "InvitationLinkBuilder"],
+      "acceptanceCriteria": [
+        "Existing-user path creates membership immediately and returns member data",
+        "New-user path returns an invitation link containing the raw token",
+        "Re-inviting an existing pending email replaces the previous invitation"
+      ]
+    },
+    {
+      "id": "SRV-055",
+      "title": "Accept and reject invitation endpoints",
+      "module": "Invitations",
+      "phase": "P6",
+      "priority": "P0",
+      "mvp": true,
+      "estimateHours": 4,
+      "prdRefs": ["25", "39"],
+      "description": "POST /api/invitations/{token}/accept creates the DocumentMember for the authenticated user and marks the invitation accepted; /reject marks it declined. Add a public preview endpoint returning document title and inviter for the landing page.",
+      "dependsOn": ["SRV-054"],
+      "deliverables": ["InvitationsController.Accept/Reject/Preview"],
+      "acceptanceCriteria": [
+        "Accepting requires authentication and matches the invited email",
+        "A token cannot be accepted twice",
+        "Preview leaks no content, only title and inviter display name"
+      ]
+    },
+    {
+      "id": "SRV-056",
+      "title": "Share links",
+      "module": "SharingPermissions",
+      "phase": "P6",
+      "priority": "P1",
+      "mvp": true,
+      "estimateHours": 5,
+      "prdRefs": ["28"],
+      "description": "Owner-managed share links granting Viewer or Editor access via a secure random token, with enable/disable, optional expiry, and resolution inside the access service. Document ids are never used as access tokens.",
+      "dependsOn": ["SRV-053", "SRV-031"],
+      "deliverables": ["DocumentShareLink entity + migration", "ShareLinksController", "Share link branch in IDocumentAccessService"],
+      "acceptanceCriteria": [
+        "Disabling a link immediately revokes access for future requests and hub joins",
+        "Link tokens are stored hashed",
+        "Link-granted role never exceeds the configured role"
+      ]
+    },
+    {
+      "id": "SRV-057",
+      "title": "End-to-end permission enforcement matrix",
+      "module": "SharingPermissions",
+      "phase": "P6",
+      "priority": "P0",
+      "mvp": true,
+      "estimateHours": 5,
+      "prdRefs": ["27", "41"],
+      "description": "Audit every REST endpoint and hub method against the Owner/Editor/Commenter/Viewer matrix and close gaps; produce a machine-readable matrix used by tests.",
+      "dependsOn": ["SRV-056", "SRV-051", "SRV-041"],
+      "deliverables": ["docs/permission-matrix.md", "PermissionMatrix.cs"],
+      "acceptanceCriteria": [
+        "Every endpoint and hub method has an explicit required permission - no implicit allow",
+        "Commenter cannot send document updates over the hub",
+        "Matrix is asserted by an automated test that fails on unmapped endpoints"
+      ]
+    },
+    {
+      "id": "SRV-058",
+      "title": "Live permission-change propagation",
+      "module": "SharingPermissions",
+      "phase": "P6",
+      "priority": "P1",
+      "mvp": true,
+      "estimateHours": 4,
+      "prdRefs": ["27", "45"],
+      "description": "When a member's role changes or is revoked, invalidate caches and push a PermissionChanged event to that user's connections, downgrading or disconnecting them mid-session.",
+      "dependsOn": ["SRV-057", "SRV-042"],
+      "deliverables": ["PermissionChanged event", "Membership change notifier"],
+      "acceptanceCriteria": [
+        "Demoting an Editor to Viewer while connected stops their updates from being accepted within seconds",
+        "Removed members are ejected from the hub group",
+        "Covers PRD section 45 Test 8"
+      ]
+    },
+    {
+      "id": "SRV-059",
+      "title": "Sharing, invitation and permission tests",
+      "module": "Testing",
+      "phase": "P6",
+      "priority": "P0",
+      "mvp": true,
+      "estimateHours": 6,
+      "prdRefs": ["44"],
+      "description": "Integration tests for member management, both invitation flows, share links, and mid-session permission revocation.",
+      "dependsOn": ["SRV-058"],
+      "deliverables": ["Tests/Integration/SharingTests.cs", "Tests/Integration/InvitationTests.cs"],
+      "acceptanceCriteria": [
+        "Token reuse, expiry and wrong-email acceptance are all covered",
+        "Permission matrix test fails when a new endpoint is added without a mapping"
+      ]
+    },
+    {
+      "id": "SRV-060",
+      "title": "Comment entities and migration",
+      "module": "Comments",
+      "phase": "P7",
+      "priority": "P0",
+      "mvp": true,
+      "estimateHours": 4,
+      "prdRefs": ["22", "23", "36"],
+      "description": "Create Comments (Id, DocumentId, AuthorId, AnchorId, QuotedText, Body, Status, CreatedAt, UpdatedAt, ResolvedBy, ResolvedAt), CommentReplies and CommentMentions with configurations and migration.",
+      "dependsOn": ["SRV-023"],
+      "deliverables": ["Comment.cs", "CommentReply.cs", "CommentMention.cs", "Migration AddCommentTables"],
+      "acceptanceCriteria": [
+        "AnchorId links a comment to a Yjs relative position stored by the client",
+        "Status supports Open and Resolved",
+        "Cascade delete removes replies and mentions with the parent comment"
+      ]
+    },
+    {
+      "id": "SRV-061",
+      "title": "Comment CRUD endpoints",
+      "module": "Comments",
+      "phase": "P7",
+      "priority": "P0",
+      "mvp": true,
+      "estimateHours": 5,
+      "prdRefs": ["22", "39"],
+      "description": "GET /api/documents/{id}/comments (with status filter), POST create, PUT /api/comments/{id}, DELETE /api/comments/{id} with author-or-owner authorization.",
+      "dependsOn": ["SRV-060", "SRV-031"],
+      "deliverables": ["CommentsController"],
+      "acceptanceCriteria": [
+        "Commenter role can create comments but not edit the document",
+        "Only the author or the document owner can edit or delete a comment",
+        "Viewer can read comments but not create them"
+      ]
+    },
+    {
+      "id": "SRV-062",
+      "title": "Comment replies",
+      "module": "Comments",
+      "phase": "P7",
+      "priority": "P0",
+      "mvp": true,
+      "estimateHours": 3,
+      "prdRefs": ["22", "39"],
+      "description": "Threaded replies under a comment with create, edit and delete, returned nested in the comment list payload.",
+      "dependsOn": ["SRV-061"],
+      "deliverables": ["CommentsController reply actions", "CommentThreadDto"],
+      "acceptanceCriteria": [
+        "Replies are ordered by creation time",
+        "Deleting a parent comment deletes its replies",
+        "Reply authorization mirrors comment authorization"
+      ]
+    },
+    {
+      "id": "SRV-063",
+      "title": "Resolve and reopen comments",
+      "module": "Comments",
+      "phase": "P7",
+      "priority": "P1",
+      "mvp": true,
+      "estimateHours": 2,
+      "prdRefs": ["22", "39"],
+      "description": "POST /api/comments/{id}/resolve and /reopen recording who resolved and when, with resolved threads excluded from the default list.",
+      "dependsOn": ["SRV-062"],
+      "deliverables": ["CommentsController.Resolve/Reopen"],
+      "acceptanceCriteria": [
+        "Resolved comments are returned only when explicitly requested",
+        "Resolver identity and timestamp are persisted"
+      ]
+    },
+    {
+      "id": "SRV-064",
+      "title": "Mentions parsing and mention records",
+      "module": "Comments",
+      "phase": "P7",
+      "priority": "P1",
+      "mvp": true,
+      "estimateHours": 4,
+      "prdRefs": ["23"],
+      "description": "Parse @mentions from comment bodies, resolve them to document members only, persist CommentMention rows and raise notification events. Add a mention-candidate search endpoint scoped to document members.",
+      "dependsOn": ["SRV-062", "SRV-091"],
+      "deliverables": ["MentionParser.cs", "GET /api/documents/{id}/mention-candidates"],
+      "acceptanceCriteria": [
+        "Mentions of non-members are ignored and never notified",
+        "Editing a comment reconciles added and removed mentions",
+        "Each mentioned user receives exactly one notification per comment version"
+      ]
+    },
+    {
+      "id": "SRV-065",
+      "title": "Real-time comment events over the hub",
+      "module": "Comments",
+      "phase": "P7",
+      "priority": "P1",
+      "mvp": true,
+      "estimateHours": 3,
+      "prdRefs": ["13", "22"],
+      "description": "Broadcast CommentAdded, CommentUpdated, CommentDeleted, CommentResolved to the document group so open editors update without polling.",
+      "dependsOn": ["SRV-063", "SRV-039"],
+      "deliverables": ["Comment hub event contracts", "Hub notifier in comment service"],
+      "acceptanceCriteria": [
+        "A comment created by user A appears for user B without a refresh",
+        "Events are only sent to users with view access to the document"
+      ]
+    },
+    {
+      "id": "SRV-066",
+      "title": "Comment tests",
+      "module": "Testing",
+      "phase": "P7",
+      "priority": "P1",
+      "mvp": true,
+      "estimateHours": 4,
+      "prdRefs": ["44"],
+      "description": "Integration tests for comment CRUD, replies, resolve flow, mention resolution and role-based authorization.",
+      "dependsOn": ["SRV-065", "SRV-064"],
+      "deliverables": ["Tests/Integration/CommentTests.cs"],
+      "acceptanceCriteria": [
+        "Viewer create attempt returns 403",
+        "Mention of a non-member creates no mention row"
+      ]
+    },
+    {
+      "id": "SRV-067",
+      "title": "DocumentVersions entity and migration",
+      "module": "Versioning",
+      "phase": "P8",
+      "priority": "P0",
+      "mvp": true,
+      "estimateHours": 3,
+      "prdRefs": ["18", "36"],
+      "description": "Create DocumentVersions (VersionId, DocumentId, VersionNumber, CreatedBy, CreatedAt, ChangeType, SnapshotId, Label) with a ChangeType enum covering Created, ContentUpdate, AiRewrite, Restore.",
+      "dependsOn": ["SRV-033"],
+      "deliverables": ["DocumentVersion.cs", "ChangeType enum", "Migration AddDocumentVersions"],
+      "acceptanceCriteria": [
+        "VersionNumber is unique per document and gap-free",
+        "Every version references a snapshot that can reconstruct its content"
+      ]
+    },
+    {
+      "id": "SRV-068",
+      "title": "Version creation service",
+      "module": "Versioning",
+      "phase": "P8",
+      "priority": "P0",
+      "mvp": true,
+      "estimateHours": 5,
+      "prdRefs": ["18", "20"],
+      "description": "Create versions at meaningful points - document creation, idle-after-substantial-change, accepted AI rewrite, explicit user save, and restore - using the distributed lock to avoid duplicate numbering.",
+      "dependsOn": ["SRV-067", "SRV-036"],
+      "deliverables": ["IVersioningService.cs", "VersioningService.cs", "VersionTriggerOptions"],
+      "acceptanceCriteria": [
+        "Continuous typing does not create a version per keystroke",
+        "Concurrent triggers under load never produce duplicate version numbers",
+        "AI-accepted content produces a version with ChangeType AiRewrite"
+      ]
+    },
+    {
+      "id": "SRV-069",
+      "title": "Version list and detail endpoints",
+      "module": "Versioning",
+      "phase": "P8",
+      "priority": "P0",
+      "mvp": true,
+      "estimateHours": 4,
+      "prdRefs": ["18", "19", "39"],
+      "description": "GET /api/documents/{id}/versions grouped for the revision-history UI, and GET /versions/{versionId} returning reconstructed content for preview.",
+      "dependsOn": ["SRV-068", "SRV-031"],
+      "deliverables": ["VersionsController.List/Get"],
+      "acceptanceCriteria": [
+        "List includes author display name, timestamp, change type and label",
+        "Detail returns content that renders read-only on the client",
+        "Access requires at least Viewer role"
+      ]
+    },
+    {
+      "id": "SRV-070",
+      "title": "Restore version endpoint with live broadcast",
+      "module": "Versioning",
+      "phase": "P8",
+      "priority": "P0",
+      "mvp": true,
+      "estimateHours": 6,
+      "prdRefs": ["18", "19", "45"],
+      "description": "POST /api/documents/{id}/versions/{versionId}/restore applies the historical state as a new CRDT update (never a destructive overwrite), records a Restore version and broadcasts DocumentRestored to connected clients.",
+      "dependsOn": ["SRV-069", "SRV-040", "SRV-050"],
+      "deliverables": ["VersionsController.Restore", "DocumentRestored event"],
+      "acceptanceCriteria": [
+        "Restoring while other users are connected converges everyone to the restored content",
+        "Restore is itself undoable because it is applied as a normal update",
+        "Only Owner or Editor may restore",
+        "Covers PRD section 45 Test 9"
+      ]
+    },
+    {
+      "id": "SRV-071",
+      "title": "Version comparison / diff endpoint",
+      "module": "Versioning",
+      "phase": "P8",
+      "priority": "P2",
+      "mvp": false,
+      "estimateHours": 6,
+      "prdRefs": ["19"],
+      "description": "Compute a structural diff between two versions and return added/removed/changed blocks for the compare UI.",
+      "dependsOn": ["SRV-069"],
+      "deliverables": ["VersionsController.Compare", "IDiffService.cs"],
+      "acceptanceCriteria": [
+        "Diff is stable and deterministic for the same version pair",
+        "Response is bounded for very large documents"
+      ]
+    },
+    {
+      "id": "SRV-072",
+      "title": "Versioning tests",
+      "module": "Testing",
+      "phase": "P8",
+      "priority": "P0",
+      "mvp": true,
+      "estimateHours": 4,
+      "prdRefs": ["44", "45"],
+      "description": "Tests for version trigger rules, numbering under concurrency, restore correctness and restore-with-connected-clients.",
+      "dependsOn": ["SRV-070"],
+      "deliverables": ["Tests/Integration/VersioningTests.cs"],
+      "acceptanceCriteria": [
+        "Parallel version creation produces sequential numbers with no duplicates",
+        "Restore round trip reproduces the exact historical content"
+      ]
+    },
+    {
+      "id": "SRV-073",
+      "title": "Document lock model",
+      "module": "Locking",
+      "phase": "P9",
+      "priority": "P2",
+      "mvp": false,
+      "estimateHours": 3,
+      "prdRefs": ["29", "36"],
+      "description": "Represent locks with LockedBy, LockedAt, ExpiresAt and LockType (Soft, Hard) - hard locks persisted in SQL Server and mirrored in Redis, soft locks ephemeral in Redis only.",
+      "dependsOn": ["SRV-050", "SRV-023"],
+      "deliverables": ["DocumentLock.cs", "Migration AddDocumentLocks", "ILockStore.cs"],
+      "acceptanceCriteria": [
+        "Soft locks never write to SQL Server",
+        "Hard locks survive an API restart until expiry"
+      ]
+    },
+    {
+      "id": "SRV-074",
+      "title": "Lock acquire and release endpoints",
+      "module": "Locking",
+      "phase": "P9",
+      "priority": "P2",
+      "mvp": false,
+      "estimateHours": 4,
+      "prdRefs": ["29"],
+      "description": "POST /api/documents/{id}/lock and /unlock with Owner-only hard locking, renewal support and enforcement inside the hub update path.",
+      "dependsOn": ["SRV-073", "SRV-040"],
+      "deliverables": ["DocumentLockController", "Lock check in SendDocumentUpdate"],
+      "acceptanceCriteria": [
+        "While hard-locked, updates from anyone other than the lock holder are rejected with DOCUMENT_LOCKED",
+        "Only the holder or the owner can release a lock",
+        "Covers PRD section 45 Test 7"
+      ]
+    },
+    {
+      "id": "SRV-075",
+      "title": "Lock expiry background job and hub events",
+      "module": "Locking",
+      "phase": "P9",
+      "priority": "P2",
+      "mvp": false,
+      "estimateHours": 3,
+      "prdRefs": ["29", "40"],
+      "description": "Expire stale locks automatically and broadcast DocumentLocked / DocumentUnlocked to the document group on every lock transition.",
+      "dependsOn": ["SRV-074"],
+      "deliverables": ["LockExpiryService.cs", "DocumentLocked/DocumentUnlocked events"],
+      "acceptanceCriteria": [
+        "A holder that disconnects has their lock released within the TTL",
+        "All connected clients see lock state change without a refresh"
+      ]
+    },
+    {
+      "id": "SRV-076",
+      "title": "AIRequests entity and migration",
+      "module": "AIAssistant",
+      "phase": "P10",
+      "priority": "P0",
+      "mvp": true,
+      "estimateHours": 3,
+      "prdRefs": ["32", "36"],
+      "description": "Create AIRequests (Id, DocumentId, UserId, Operation, Model, PromptTokens, CompletionTokens, DurationMs, Status, ErrorCode, CreatedAt) for auditing and quota - storing metadata, not full document content.",
+      "dependsOn": ["SRV-023"],
+      "deliverables": ["AIRequest.cs", "Migration AddAIRequests"],
+      "acceptanceCriteria": [
+        "No raw document text is persisted in the request log by default",
+        "Indexed by (UserId, CreatedAt) for quota queries"
+      ]
+    },
+    {
+      "id": "SRV-077",
+      "title": "Ollama HTTP client with resilience",
+      "module": "AIAssistant",
+      "phase": "P10",
+      "priority": "P0",
+      "mvp": true,
+      "estimateHours": 5,
+      "prdRefs": ["32"],
+      "description": "Typed HttpClient for Ollama generate/chat with configurable base URL and model, timeouts, cancellation, retry with backoff and a circuit breaker.",
+      "dependsOn": ["SRV-003", "SRV-002"],
+      "deliverables": ["IOllamaClient.cs", "OllamaClient.cs", "OllamaOptions"],
+      "acceptanceCriteria": [
+        "Ollama being down returns 503 with code AI_SERVICE_UNAVAILABLE rather than hanging",
+        "Client request cancellation propagates and aborts the model call",
+        "Model name is configurable without a code change"
+      ]
+    },
+    {
+      "id": "SRV-078",
+      "title": "Prompt template catalogue",
+      "module": "AIAssistant",
+      "phase": "P10",
+      "priority": "P0",
+      "mvp": true,
+      "estimateHours": 4,
+      "prdRefs": ["30", "31", "33"],
+      "description": "Versioned prompt templates per operation (generate, rewrite, improve, summarize, expand, shorten, fix-grammar, change-tone, continue) with input length guards and instruction-injection mitigation.",
+      "dependsOn": ["SRV-077"],
+      "deliverables": ["Prompts/*.txt", "IPromptFactory.cs", "PromptFactory.cs"],
+      "acceptanceCriteria": [
+        "Each operation has a dedicated template with explicit output constraints",
+        "Oversized selections are truncated with a clear rule, not silently",
+        "User text is delimited so it cannot override system instructions"
+      ]
+    },
+    {
+      "id": "SRV-079",
+      "title": "AI service abstraction",
+      "module": "AIAssistant",
+      "phase": "P10",
+      "priority": "P0",
+      "mvp": true,
+      "estimateHours": 5,
+      "prdRefs": ["32"],
+      "description": "IAiService exposing one method per operation, handling prompt building, model invocation, response post-processing and AIRequest logging. The AI layer never writes document content to SQL Server directly.",
+      "dependsOn": ["SRV-078", "SRV-076"],
+      "deliverables": ["IAiService.cs", "AiService.cs", "AI DTOs"],
+      "acceptanceCriteria": [
+        "AI output is returned to the caller only - no document mutation server-side",
+        "Every invocation writes an AIRequest row with duration and status",
+        "Post-processing strips model preamble/markdown fences when not requested"
+      ]
+    },
+    {
+      "id": "SRV-080",
+      "title": "AI authorization, rate limiting and quota",
+      "module": "AIAssistant",
+      "phase": "P10",
+      "priority": "P0",
+      "mvp": true,
+      "estimateHours": 4,
+      "prdRefs": ["27", "41"],
+      "description": "Require Editor or Owner role on the target document for all AI operations, apply a dedicated rate-limit bucket and a per-user daily quota with clear error codes.",
+      "dependsOn": ["SRV-079", "SRV-031", "SRV-007"],
+      "deliverables": ["AI authorization policy", "AI rate limit partition", "QuotaService"],
+      "acceptanceCriteria": [
+        "Viewer and Commenter receive 403 on every AI endpoint",
+        "Quota exhaustion returns 429 with code AI_QUOTA_EXCEEDED",
+        "A document id is required and validated on every AI request"
+      ]
+    },
+    {
+      "id": "SRV-081",
+      "title": "AI Phase 1 endpoints",
+      "module": "AIAssistant",
+      "phase": "P10",
+      "priority": "P0",
+      "mvp": true,
+      "estimateHours": 6,
+      "prdRefs": ["31", "33", "39"],
+      "description": "Implement POST /api/ai/generate, /rewrite, /improve, /summarize, /expand, /shorten, /fix-grammar, /change-tone, /continue with a shared request shape (documentId, selection, context, options).",
+      "dependsOn": ["SRV-080"],
+      "deliverables": ["AiController", "AiOperationRequest/Response"],
+      "acceptanceCriteria": [
+        "All nine operations return usable output for a representative sample input",
+        "Responses include the operation, model and elapsed time",
+        "Errors follow the standard envelope"
+      ]
+    },
+    {
+      "id": "SRV-082",
+      "title": "Streaming AI responses",
+      "module": "AIAssistant",
+      "phase": "P10",
+      "priority": "P1",
+      "mvp": false,
+      "estimateHours": 5,
+      "prdRefs": ["31", "32"],
+      "description": "Stream tokens to the client over Server-Sent Events or IAsyncEnumerable so long generations render progressively, with cancellation support.",
+      "dependsOn": ["SRV-081"],
+      "deliverables": ["Streaming endpoints", "SSE writer"],
+      "acceptanceCriteria": [
+        "First token reaches the client well before completion",
+        "Client abort cancels the Ollama call and closes the stream",
+        "A partial stream still records an AIRequest row with status Cancelled"
+      ]
+    },
+    {
+      "id": "SRV-083",
+      "title": "AI Phase 2 document-aware endpoints",
+      "module": "AIAssistant",
+      "phase": "P10",
+      "priority": "P2",
+      "mvp": false,
+      "estimateHours": 6,
+      "prdRefs": ["34"],
+      "description": "Ask-about-document, whole-document summarization, outline generation, action items and meeting notes, built on the current document snapshot with context-window-aware truncation.",
+      "dependsOn": ["SRV-081", "SRV-034"],
+      "deliverables": ["AiController Phase 2 actions"],
+      "acceptanceCriteria": [
+        "Document content is loaded from the snapshot, not from the client payload",
+        "Documents exceeding the context window degrade gracefully with a documented strategy"
+      ]
+    },
+    {
+      "id": "SRV-084",
+      "title": "AI service tests with mocked Ollama",
+      "module": "Testing",
+      "phase": "P10",
+      "priority": "P0",
+      "mvp": true,
+      "estimateHours": 5,
+      "prdRefs": ["44"],
+      "description": "Unit tests for prompt construction and post-processing, and integration tests for all AI endpoints with a stubbed Ollama server covering success, timeout and failure paths.",
+      "dependsOn": ["SRV-081"],
+      "deliverables": ["Tests/Unit/Ai/", "Tests/Integration/AiEndpointsTests.cs", "FakeOllamaServer.cs"],
+      "acceptanceCriteria": [
+        "Tests never call a real model",
+        "Timeout and circuit-open behaviour is asserted",
+        "Authorization tests cover all four roles"
+      ]
+    },
+    {
+      "id": "SRV-085",
+      "title": "Document chunking service",
+      "module": "RAG",
+      "phase": "P11",
+      "priority": "P3",
+      "mvp": false,
+      "estimateHours": 4,
+      "prdRefs": ["35"],
+      "description": "Split document content into overlapping semantic chunks with stable ids so re-indexing only touches changed chunks.",
+      "dependsOn": ["SRV-083"],
+      "deliverables": ["IChunkingService.cs", "ChunkingService.cs"],
+      "acceptanceCriteria": [
+        "Chunk boundaries respect block structure where possible",
+        "Unchanged content produces identical chunk ids across runs"
+      ]
+    },
+    {
+      "id": "SRV-086",
+      "title": "Embeddings generation via Ollama",
+      "module": "RAG",
+      "phase": "P11",
+      "priority": "P3",
+      "mvp": false,
+      "estimateHours": 4,
+      "prdRefs": ["35"],
+      "description": "Batch embedding generation with a configurable embedding model, retry handling and dimension validation.",
+      "dependsOn": ["SRV-085", "SRV-077"],
+      "deliverables": ["IEmbeddingService.cs", "OllamaEmbeddingService.cs"],
+      "acceptanceCriteria": [
+        "Embedding dimension mismatch fails loudly at startup or first call",
+        "Batching keeps throughput acceptable for a large document"
+      ]
+    },
+    {
+      "id": "SRV-087",
+      "title": "Qdrant client and collection management",
+      "module": "RAG",
+      "phase": "P11",
+      "priority": "P3",
+      "mvp": false,
+      "estimateHours": 4,
+      "prdRefs": ["35"],
+      "description": "Create and migrate the vector collection, upsert and delete points with documentId payload filtering for tenant isolation.",
+      "dependsOn": ["SRV-086", "SRV-003"],
+      "deliverables": ["IVectorStore.cs", "QdrantVectorStore.cs"],
+      "acceptanceCriteria": [
+        "Searches are always filtered by documentId",
+        "Collection is created idempotently on startup"
+      ]
+    },
+    {
+      "id": "SRV-088",
+      "title": "Background indexing pipeline",
+      "module": "RAG",
+      "phase": "P11",
+      "priority": "P3",
+      "mvp": false,
+      "estimateHours": 5,
+      "prdRefs": ["35"],
+      "description": "BackgroundService that re-indexes a document after a debounce following content changes, removing stale chunks and upserting new ones.",
+      "dependsOn": ["SRV-087", "SRV-035"],
+      "deliverables": ["DocumentIndexingService.cs"],
+      "acceptanceCriteria": [
+        "Editing does not trigger an embedding call per keystroke",
+        "Deleted documents have their vectors purged"
+      ]
+    },
+    {
+      "id": "SRV-089",
+      "title": "RAG question-answering endpoint",
+      "module": "RAG",
+      "phase": "P11",
+      "priority": "P3",
+      "mvp": false,
+      "estimateHours": 5,
+      "prdRefs": ["35"],
+      "description": "POST /api/ai/ask retrieving top-k relevant chunks for the document, composing a grounded prompt and returning the answer with source chunk references.",
+      "dependsOn": ["SRV-088", "SRV-080"],
+      "deliverables": ["AiController.Ask", "RagService.cs"],
+      "acceptanceCriteria": [
+        "Answers cite the chunks they were derived from",
+        "A question with no relevant context returns an explicit 'not found in document' response",
+        "Access control matches other AI endpoints"
+      ]
+    },
+    {
+      "id": "SRV-090",
+      "title": "Notifications entity and endpoints",
+      "module": "Notifications",
+      "phase": "P12",
+      "priority": "P1",
+      "mvp": true,
+      "estimateHours": 4,
+      "prdRefs": ["23", "36"],
+      "description": "Notifications table (Id, UserId, Type, Title, Body, DocumentId, RefId, IsRead, CreatedAt) with list, mark-read and mark-all-read endpoints.",
+      "dependsOn": ["SRV-023"],
+      "deliverables": ["Notification.cs", "NotificationsController", "Migration AddNotifications"],
+      "acceptanceCriteria": [
+        "Users only ever see their own notifications",
+        "Unread count is available in a single cheap query"
+      ]
+    },
+    {
+      "id": "SRV-091",
+      "title": "Notification service and real-time delivery",
+      "module": "Notifications",
+      "phase": "P12",
+      "priority": "P1",
+      "mvp": true,
+      "estimateHours": 4,
+      "prdRefs": ["23", "25"],
+      "description": "INotificationService raising notifications for mentions, invitations, membership changes and document shares, delivered live to the recipient's connections via a user-scoped hub channel.",
+      "dependsOn": ["SRV-090", "SRV-038"],
+      "deliverables": ["INotificationService.cs", "NotificationService.cs", "NotificationReceived event"],
+      "acceptanceCriteria": [
+        "A mentioned user connected elsewhere receives the notification without a refresh",
+        "Offline recipients see the notification on next login",
+        "Notification creation never blocks the originating request"
+      ]
+    },
+    {
+      "id": "SRV-092",
+      "title": "Audit logging service and interceptor",
+      "module": "AuditLogs",
+      "phase": "P12",
+      "priority": "P1",
+      "mvp": false,
+      "estimateHours": 5,
+      "prdRefs": ["36", "43"],
+      "description": "AuditLogs entity plus a service that records the PRD section 43 event list (login, document opened, joined/left, changed, version created, permission changed, invitation created, AI request, restored, lock acquired/released) asynchronously.",
+      "dependsOn": ["SRV-023", "SRV-006"],
+      "deliverables": ["AuditLog.cs", "IAuditService.cs", "AuditService.cs", "Migration AddAuditLogs"],
+      "acceptanceCriteria": [
+        "Every event in PRD section 43 has a corresponding audit write",
+        "Audit writes never block or fail the primary operation",
+        "No passwords, tokens or full document content are stored"
+      ]
+    },
+    {
+      "id": "SRV-093",
+      "title": "Audit query and administration endpoints",
+      "module": "Administration",
+      "phase": "P12",
+      "priority": "P2",
+      "mvp": false,
+      "estimateHours": 4,
+      "prdRefs": ["36", "43"],
+      "description": "Filtered audit queries for document owners (their documents) and admins (global), plus basic admin endpoints for user listing and deactivation.",
+      "dependsOn": ["SRV-092"],
+      "deliverables": ["AuditController", "AdminController", "Admin policy"],
+      "acceptanceCriteria": [
+        "Document owners can only query audit rows for their documents",
+        "Admin endpoints require an explicit admin policy, not just authentication"
+      ]
+    },
+    {
+      "id": "SRV-094",
+      "title": "Critical collaboration scenario test suite",
+      "module": "Testing",
+      "phase": "P13",
+      "priority": "P0",
+      "mvp": true,
+      "estimateHours": 12,
+      "prdRefs": ["45"],
+      "description": "Automate all nine PRD section 45 scenarios end to end: same-paragraph concurrency, five-user distributed edits, offline divergence, mid-edit disconnect, reconnect with pending changes, AI-during-edit, lock-during-edit, permission loss while connected, and restore while connected.",
+      "dependsOn": ["SRV-046", "SRV-058", "SRV-070", "SRV-075", "SRV-081"],
+      "deliverables": ["Tests/Collaboration/CriticalScenarioTests.cs", "docs/collaboration-test-report.md"],
+      "acceptanceCriteria": [
+        "All nine scenarios pass repeatably in CI",
+        "Each scenario asserts final-state convergence across every participating client",
+        "No test relies on fixed sleeps for synchronization"
+      ]
+    },
+    {
+      "id": "SRV-095",
+      "title": "Load testing harness",
+      "module": "Testing",
+      "phase": "P13",
+      "priority": "P2",
+      "mvp": false,
+      "estimateHours": 8,
+      "prdRefs": ["15", "46"],
+      "description": "Scripted load test driving N simulated SignalR clients per document with realistic typing patterns, measuring end-to-end update latency percentiles and server resource use.",
+      "dependsOn": ["SRV-094"],
+      "deliverables": ["loadtest/ project", "docs/load-test-results.md"],
+      "acceptanceCriteria": [
+        "50 concurrent editors on one document stay under 200ms p95 perceived latency",
+        "No dropped CRDT updates across the run",
+        "Results are reproducible and recorded"
+      ]
+    },
+    {
+      "id": "SRV-096",
+      "title": "Horizontal scaling validation",
+      "module": "DevOps",
+      "phase": "P13",
+      "priority": "P2",
+      "mvp": false,
+      "estimateHours": 6,
+      "prdRefs": ["15", "38", "46"],
+      "description": "Run multiple API instances behind a reverse proxy with sticky-session-free WebSockets and validate the Redis backplane under load, including instance failure mid-session.",
+      "dependsOn": ["SRV-095", "SRV-048", "SRV-049"],
+      "deliverables": ["docker-compose.scale.yml", "nginx/proxy config", "docs/scaling.md"],
+      "acceptanceCriteria": [
+        "Clients on different instances collaborate with no visible difference",
+        "Killing one instance reconnects its clients elsewhere with no lost updates",
+        "100+ concurrent users per document is demonstrated or the gap is documented"
+      ]
+    },
+    {
+      "id": "SRV-097",
+      "title": "Metrics and monitoring",
+      "module": "DevOps",
+      "phase": "P13",
+      "priority": "P2",
+      "mvp": false,
+      "estimateHours": 5,
+      "prdRefs": ["43", "46"],
+      "description": "Expose application metrics (active connections, updates/sec, persistence lag, AI latency, hub errors) via OpenTelemetry/Prometheus with a starter dashboard.",
+      "dependsOn": ["SRV-006"],
+      "deliverables": ["Metrics instrumentation", "docker-compose.monitoring.yml", "dashboard.json"],
+      "acceptanceCriteria": [
+        "Persistence buffer lag is observable in real time",
+        "Hub error rate and AI failure rate have dedicated metrics"
+      ]
+    },
+    {
+      "id": "SRV-098",
+      "title": "Security hardening review",
+      "module": "Infrastructure",
+      "phase": "P13",
+      "priority": "P1",
+      "mvp": false,
+      "estimateHours": 6,
+      "prdRefs": ["41"],
+      "description": "Systematic pass over the PRD section 41 checklist: authorization coverage, token handling, invitation token security, rate limits, CORS, input validation, hub authorization, AI endpoint authorization and dependency vulnerability scan.",
+      "dependsOn": ["SRV-094", "SRV-057"],
+      "deliverables": ["docs/security-review.md", "remediation tasks"],
+      "acceptanceCriteria": [
+        "Every item in PRD section 41 is marked verified with evidence",
+        "No known high-severity dependency vulnerabilities remain",
+        "Any accepted risk is explicitly documented"
+      ]
+    },
+    {
+      "id": "SRV-099",
+      "title": "Backend Dockerfile, compose and CI pipeline",
+      "module": "DevOps",
+      "phase": "P13",
+      "priority": "P1",
+      "mvp": false,
+      "estimateHours": 6,
+      "prdRefs": ["47"],
+      "description": "Multi-stage Dockerfile for the API, full docker-compose.yml including frontend/backend/sqlserver/redis/ollama/qdrant, and a CI workflow running build, tests and image publish.",
+      "dependsOn": ["SRV-008", "SRV-094"],
+      "deliverables": ["src/Api/Dockerfile", "docker-compose.yml", ".github/workflows/ci.yml"],
+      "acceptanceCriteria": [
+        "docker compose up brings the whole stack to a working state from a clean machine",
+        "Migrations are applied automatically or via a documented one-liner",
+        "CI fails the build when any test fails"
+      ]
+    }
+  ]
+}

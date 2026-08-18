@@ -1,0 +1,6 @@
+<Solution>
+  <Project Path="SyncNote.Model/SyncNote.Model.csproj" />
+  <Project Path="SyncNote.Repository/SyncNote.Repository.csproj" />
+  <Project Path="SyncNote.Server/SyncNote.Server.csproj" />
+  <Project Path="SyncNote.Service/SyncNote.Service.csproj" />
+</Solution>

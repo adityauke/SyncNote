@@ -1,0 +1,1802 @@
+{
+  "$schema": "./task-planner.schema.json",
+  "meta": {
+    "project": "Real-Time Collaborative Document Editor",
+    "side": "client",
+    "stack": "React + TypeScript + Vite + Tiptap/ProseMirror + Yjs + SignalR Client + Zustand + Tailwind + shadcn/ui",
+    "sourceDocument": "Prd.md",
+    "version": "1.0.0",
+    "generatedOn": "2026-08-17",
+    "idPrefix": "CLI",
+    "companionPlan": "tasks.server.json",
+    "conventions": {
+      "status": ["not-started", "in-progress", "blocked", "in-review", "done"],
+      "priority": ["P0", "P1", "P2", "P3"],
+      "priorityMeaning": {
+        "P0": "MVP blocker - nothing usable without it",
+        "P1": "MVP scope per PRD section 52",
+        "P2": "Post-MVP, planned",
+        "P3": "Optional / stretch"
+      },
+      "dependsOn": "Task IDs inside this file that must be 'done' before this task starts",
+      "dependsOnServer": "Task IDs in tasks.server.json this task consumes; mock the contract to start earlier, but do not close the task until the server task is done",
+      "estimateHours": "Solo-developer focused hours, excluding review/rework",
+      "mvp": "true = included in PRD section 52 MVP definition"
+    }
+  },
+  "phases": [
+    { "id": "C0", "name": "Foundation & Tooling", "goal": "Vite app, design system, routing, API client, test harness", "prdRefs": ["4", "49"] },
+    { "id": "C1", "name": "Authentication UI", "goal": "Register, login, token lifecycle, guarded routes, profile", "prdRefs": ["7"] },
+    { "id": "C2", "name": "Dashboard & Document Management", "goal": "Document list, search, sort and lifecycle actions", "prdRefs": ["8", "9"] },
+    { "id": "C3", "name": "Rich Text Editor", "goal": "Tiptap editor with full formatting, toolbar and autosave UX", "prdRefs": ["10", "16"] },
+    { "id": "C4", "name": "Real-Time Collaboration", "goal": "Yjs binding, SignalR provider, cursors, presence", "prdRefs": ["11", "12", "13", "14"] },
+    { "id": "C5", "name": "Offline & Resilience", "goal": "Local persistence, reconnection, queued updates, merge", "prdRefs": ["17"] },
+    { "id": "C6", "name": "Comments & Mentions", "goal": "Anchored comment threads, replies, resolve, @mentions", "prdRefs": ["22", "23"] },
+    { "id": "C7", "name": "Sharing & Permissions UI", "goal": "Share dialog, invitations, roles, permission-aware UI", "prdRefs": ["24", "25", "27", "28"] },
+    { "id": "C8", "name": "Versioning & Revision History", "goal": "History panel, preview, restore, compare", "prdRefs": ["18", "19"] },
+    { "id": "C9", "name": "Document Locking UI", "goal": "Soft and hard lock indicators and controls", "prdRefs": ["29"] },
+    { "id": "C10", "name": "AI Assistant UI", "goal": "AI menu, preview, accept/reject into the Yjs document", "prdRefs": ["21", "30", "31", "33", "34"] },
+    { "id": "C11", "name": "Notifications & Polish", "goal": "Notification center, shortcuts, a11y, responsiveness, performance", "prdRefs": ["23", "46"] },
+    { "id": "C12", "name": "Release Engineering", "goal": "Manual multi-user verification, build, Docker, CI", "prdRefs": ["45", "47"] }
+  ],
+  "modules": [
+    "AppShell", "Authentication", "Dashboard", "DocumentManagement", "Editor",
+    "Collaboration", "Presence", "Offline", "Comments", "SharingPermissions",
+    "Versioning", "Locking", "AIAssistant", "Notifications", "Testing", "DevOps"
+  ],
+  "milestones": [
+    { "id": "CM1", "name": "App shell with auth", "phase": "C1", "exitCriteria": "User can register, log in, stay logged in across refresh, and reach a protected route", "completesTasks": ["CLI-019"] },
+    { "id": "CM2", "name": "Dashboard usable", "phase": "C2", "exitCriteria": "User can create, open, rename, duplicate, archive, delete and search documents", "completesTasks": ["CLI-027"] },
+    { "id": "CM3", "name": "Editor usable solo", "phase": "C3", "exitCriteria": "Full formatting works and edits persist with a visible save state", "completesTasks": ["CLI-036"] },
+    { "id": "CM4", "name": "Real-time collaboration live", "phase": "C4", "exitCriteria": "Two browsers edit one document with live cursors and presence", "completesTasks": ["CLI-047"] },
+    { "id": "CM5", "name": "Offline-capable", "phase": "C5", "exitCriteria": "Editing continues offline and merges cleanly on reconnect", "completesTasks": ["CLI-053"] },
+    { "id": "CM6", "name": "MVP frontend complete", "phase": "C10", "exitCriteria": "Comments, sharing, versions and AI write/rewrite all working end to end", "completesTasks": ["CLI-086"] },
+    { "id": "CM7", "name": "Shippable", "phase": "C12", "exitCriteria": "Multi-user manual matrix passes; production build containerized", "completesTasks": ["CLI-093"] }
+  ],
+  "criticalPath": [
+    "CLI-001", "CLI-002", "CLI-005", "CLI-006", "CLI-012", "CLI-014", "CLI-016",
+    "CLI-020", "CLI-022", "CLI-028", "CLI-029", "CLI-037", "CLI-038", "CLI-041",
+    "CLI-043", "CLI-048", "CLI-051", "CLI-067", "CLI-082", "CLI-092"
+  ],
+  "tasks": [
+    {
+      "id": "CLI-001",
+      "title": "Scaffold Vite + React + TypeScript application",
+      "module": "AppShell",
+      "phase": "C0",
+      "priority": "P0",
+      "mvp": true,
+      "estimateHours": 2,
+      "prdRefs": ["4", "49"],
+      "description": "Create the Vite React-TS app with strict TypeScript, path aliases and the folder structure from PRD section 49 (app, components, pages, hooks, services, store, types, utils).",
+      "dependsOn": [],
+      "dependsOnServer": [],
+      "deliverables": ["vite.config.ts", "tsconfig.json with @/* alias", "src/ folder skeleton"],
+      "acceptanceCriteria": [
+        "npm run dev serves the app with hot reload",
+        "strict and noUncheckedIndexedAccess are enabled and the build is clean",
+        "Folder structure matches PRD section 49"
+      ]
+    },
+    {
+      "id": "CLI-002",
+      "title": "Tailwind CSS and shadcn/ui setup",
+      "module": "AppShell",
+      "phase": "C0",
+      "priority": "P0",
+      "mvp": true,
+      "estimateHours": 3,
+      "prdRefs": ["4"],
+      "description": "Install and configure Tailwind, initialise shadcn/ui, define the theme tokens (colors, spacing, radii, typography) and add the base component set used across the app.",
+      "dependsOn": ["CLI-001"],
+      "dependsOnServer": [],
+      "deliverables": ["tailwind.config.ts", "components/ui/*", "src/styles/globals.css"],
+      "acceptanceCriteria": [
+        "Button, Input, Dialog, DropdownMenu, Avatar, Toast and Tooltip render correctly",
+        "Light and dark themes both work from a single token set",
+        "No unstyled flash on first paint"
+      ]
+    },
+    {
+      "id": "CLI-003",
+      "title": "Linting, formatting and pre-commit hooks",
+      "module": "AppShell",
+      "phase": "C0",
+      "priority": "P1",
+      "mvp": false,
+      "estimateHours": 2,
+      "prdRefs": ["4"],
+      "description": "ESLint with React/TypeScript/hooks rules, Prettier, import ordering and a pre-commit hook running lint and typecheck on staged files.",
+      "dependsOn": ["CLI-001"],
+      "dependsOnServer": [],
+      "deliverables": [".eslintrc.cjs", ".prettierrc", "husky + lint-staged config"],
+      "acceptanceCriteria": [
+        "Commits with type errors or lint errors are blocked locally",
+        "Formatting is deterministic across machines"
+      ]
+    },
+    {
+      "id": "CLI-004",
+      "title": "Shared TypeScript domain types",
+      "module": "AppShell",
+      "phase": "C0",
+      "priority": "P0",
+      "mvp": true,
+      "estimateHours": 3,
+      "prdRefs": ["39", "42"],
+      "description": "Define types for User, Document, DocumentMember, DocumentRole, Comment, Version, Presence, AI operations, and the ApiResponse envelope - generated from swagger where practical.",
+      "dependsOn": ["CLI-001"],
+      "dependsOnServer": ["SRV-009"],
+      "deliverables": ["src/types/*.ts", "scripts/generate-api-types (optional)"],
+      "acceptanceCriteria": [
+        "Types mirror the server DTOs exactly, including enum values",
+        "ApiResponse<T> models the { success, message, code } contract",
+        "No use of any in service signatures"
+      ]
+    },
+    {
+      "id": "CLI-005",
+      "title": "Routing and application shell layout",
+      "module": "AppShell",
+      "phase": "C0",
+      "priority": "P0",
+      "mvp": true,
+      "estimateHours": 4,
+      "prdRefs": ["49"],
+      "description": "React Router setup with public routes (login, register, invitation landing), protected routes (dashboard, document, profile), a shared app layout with header/nav, and lazy-loaded route chunks.",
+      "dependsOn": ["CLI-002"],
+      "dependsOnServer": [],
+      "deliverables": ["src/app/router.tsx", "src/app/layouts/*", "route-level Suspense fallbacks"],
+      "acceptanceCriteria": [
+        "Deep-linking to /documents/{id} works after a full page reload",
+        "Unknown routes render a 404 page",
+        "Editor route is code-split from the dashboard"
+      ]
+    },
+    {
+      "id": "CLI-006",
+      "title": "HTTP API client with interceptors",
+      "module": "AppShell",
+      "phase": "C0",
+      "priority": "P0",
+      "mvp": true,
+      "estimateHours": 4,
+      "prdRefs": ["39", "42"],
+      "description": "services/api.ts wrapping the HTTP client with base URL config, bearer token injection, ApiResponse unwrapping, typed error normalization and an abort-signal-aware request helper.",
+      "dependsOn": ["CLI-004"],
+      "dependsOnServer": ["SRV-005"],
+      "deliverables": ["src/services/api.ts", "src/types/api-error.ts"],
+      "acceptanceCriteria": [
+        "Callers receive typed data or a typed ApiError carrying message and code",
+        "Base URL comes from environment configuration",
+        "In-flight requests can be cancelled on unmount"
+      ]
+    },
+    {
+      "id": "CLI-007",
+      "title": "Environment configuration",
+      "module": "AppShell",
+      "phase": "C0",
+      "priority": "P1",
+      "mvp": true,
+      "estimateHours": 1,
+      "prdRefs": ["47"],
+      "description": "Typed access to Vite env vars for API base URL, hub URL and feature flags, with a validation step that fails the build on missing required values.",
+      "dependsOn": ["CLI-001"],
+      "dependsOnServer": [],
+      "deliverables": ["src/config/env.ts", ".env.example"],
+      "acceptanceCriteria": [
+        "Missing required env var produces a clear startup error, not undefined at runtime",
+        "Feature flags allow AI and RAG UI to be toggled off"
+      ]
+    },
+    {
+      "id": "CLI-008",
+      "title": "Testing harness (Vitest + React Testing Library)",
+      "module": "Testing",
+      "phase": "C0",
+      "priority": "P0",
+      "mvp": true,
+      "estimateHours": 3,
+      "prdRefs": ["44"],
+      "description": "Configure Vitest with jsdom, RTL, MSW for API mocking, and shared test utilities for rendering with router/store providers.",
+      "dependsOn": ["CLI-006"],
+      "dependsOnServer": [],
+      "deliverables": ["vitest.config.ts", "src/test/setup.ts", "src/test/render.tsx", "MSW handlers"],
+      "acceptanceCriteria": [
+        "A sample component test passes via npm test",
+        "API calls in tests are intercepted by MSW, never hitting the network",
+        "Coverage reporting is configured"
+      ]
+    },
+    {
+      "id": "CLI-009",
+      "title": "Error boundaries, toasts and global feedback",
+      "module": "AppShell",
+      "phase": "C0",
+      "priority": "P1",
+      "mvp": true,
+      "estimateHours": 3,
+      "prdRefs": ["42"],
+      "description": "Route-level error boundaries, a toast system fed by the API error normalizer, and shared loading/empty/error state components.",
+      "dependsOn": ["CLI-006", "CLI-002"],
+      "dependsOnServer": ["SRV-005"],
+      "deliverables": ["ErrorBoundary.tsx", "useToast + Toaster", "components/states/*"],
+      "acceptanceCriteria": [
+        "A thrown render error shows a recoverable fallback, not a blank page",
+        "Server error codes map to friendly, human messages",
+        "One consistent empty/loading/error pattern is used across pages"
+      ]
+    },
+    {
+      "id": "CLI-010",
+      "title": "Auth store (Zustand)",
+      "module": "Authentication",
+      "phase": "C1",
+      "priority": "P0",
+      "mvp": true,
+      "estimateHours": 3,
+      "prdRefs": ["7", "49"],
+      "description": "store/auth.store.ts holding user, access token, auth status and actions; access token in memory, refresh token in a persisted secure store, with rehydration on app boot.",
+      "dependsOn": ["CLI-006"],
+      "dependsOnServer": ["SRV-015"],
+      "deliverables": ["src/store/auth.store.ts"],
+      "acceptanceCriteria": [
+        "Refreshing the page keeps the user signed in",
+        "Access token is not written to localStorage",
+        "Auth state exposes a loading phase so guards do not flash the login page"
+      ]
+    },
+    {
+      "id": "CLI-011",
+      "title": "Auth service",
+      "module": "Authentication",
+      "phase": "C1",
+      "priority": "P0",
+      "mvp": true,
+      "estimateHours": 3,
+      "prdRefs": ["7", "39"],
+      "description": "services/auth.service.ts covering register, login, refresh, logout, getProfile, updateProfile and changePassword against the auth endpoints.",
+      "dependsOn": ["CLI-010"],
+      "dependsOnServer": ["SRV-014", "SRV-015", "SRV-016", "SRV-017", "SRV-019"],
+      "deliverables": ["src/services/auth.service.ts"],
+      "acceptanceCriteria": [
+        "Every method is fully typed with no any",
+        "Service is unit tested against MSW handlers"
+      ]
+    },
+    {
+      "id": "CLI-012",
+      "title": "Silent token refresh and 401 retry interceptor",
+      "module": "Authentication",
+      "phase": "C1",
+      "priority": "P0",
+      "mvp": true,
+      "estimateHours": 5,
+      "prdRefs": ["7", "41"],
+      "description": "Interceptor that refreshes an expired access token once, queues concurrent 401s behind a single refresh call, retries them, and forces logout when refresh fails.",
+      "dependsOn": ["CLI-011"],
+      "dependsOnServer": ["SRV-016"],
+      "deliverables": ["Refresh interceptor in api.ts", "Refresh mutex"],
+      "acceptanceCriteria": [
+        "Five simultaneous 401s trigger exactly one refresh request",
+        "Failed refresh clears auth state and redirects to login without a loop",
+        "SignalR connection picks up the new token after refresh"
+      ]
+    },
+    {
+      "id": "CLI-013",
+      "title": "Register page",
+      "module": "Authentication",
+      "phase": "C1",
+      "priority": "P0",
+      "mvp": true,
+      "estimateHours": 3,
+      "prdRefs": ["7"],
+      "description": "Registration form with client-side validation matching server rules, field-level server error mapping, password strength hint and post-register redirect.",
+      "dependsOn": ["CLI-011", "CLI-009"],
+      "dependsOnServer": ["SRV-014"],
+      "deliverables": ["src/pages/auth/RegisterPage.tsx"],
+      "acceptanceCriteria": [
+        "Duplicate email shows an inline field error, not a raw toast",
+        "Submit is disabled while pending and cannot double-submit",
+        "Successful registration lands on the dashboard authenticated"
+      ]
+    },
+    {
+      "id": "CLI-014",
+      "title": "Login page",
+      "module": "Authentication",
+      "phase": "C1",
+      "priority": "P0",
+      "mvp": true,
+      "estimateHours": 3,
+      "prdRefs": ["7"],
+      "description": "Login form with validation, generic credential error handling, and return-url support so protected deep links resume after sign-in.",
+      "dependsOn": ["CLI-013"],
+      "dependsOnServer": ["SRV-015"],
+      "deliverables": ["src/pages/auth/LoginPage.tsx"],
+      "acceptanceCriteria": [
+        "Being redirected from /documents/{id} returns there after login",
+        "Invalid credentials show a single generic message"
+      ]
+    },
+    {
+      "id": "CLI-015",
+      "title": "Route guards and role-aware access",
+      "module": "Authentication",
+      "phase": "C1",
+      "priority": "P0",
+      "mvp": true,
+      "estimateHours": 3,
+      "prdRefs": ["27", "41"],
+      "description": "ProtectedRoute and PublicOnlyRoute wrappers plus a permission helper for role gating in UI, with the explicit rule that UI gating is convenience only and the server is authoritative.",
+      "dependsOn": ["CLI-014", "CLI-005"],
+      "dependsOnServer": ["SRV-031"],
+      "deliverables": ["src/app/guards/*", "src/utils/permissions.ts"],
+      "acceptanceCriteria": [
+        "No protected content renders before auth rehydration completes",
+        "Logged-in users visiting /login are redirected to the dashboard",
+        "Permission helper mirrors the server role matrix from PRD section 27"
+      ]
+    },
+    {
+      "id": "CLI-016",
+      "title": "Logout and session expiry handling",
+      "module": "Authentication",
+      "phase": "C1",
+      "priority": "P0",
+      "mvp": true,
+      "estimateHours": 2,
+      "prdRefs": ["7"],
+      "description": "Logout action clearing auth state, closing the SignalR connection, flushing pending local writes and revoking the refresh token server-side.",
+      "dependsOn": ["CLI-015"],
+      "dependsOnServer": ["SRV-017"],
+      "deliverables": ["Logout action + header menu item"],
+      "acceptanceCriteria": [
+        "Logout leaves no user data or tokens in storage",
+        "Any open hub connection is disposed",
+        "Unsaved buffered edits are flushed before the session closes"
+      ]
+    },
+    {
+      "id": "CLI-017",
+      "title": "Profile and change password page",
+      "module": "Authentication",
+      "phase": "C1",
+      "priority": "P1",
+      "mvp": true,
+      "estimateHours": 3,
+      "prdRefs": ["7"],
+      "description": "View and edit display name and avatar, plus a change-password form that signs other sessions out.",
+      "dependsOn": ["CLI-016"],
+      "dependsOnServer": ["SRV-019"],
+      "deliverables": ["src/pages/profile/ProfilePage.tsx"],
+      "acceptanceCriteria": [
+        "Display name change is reflected immediately in presence and comments",
+        "Wrong current password shows an inline error"
+      ]
+    },
+    {
+      "id": "CLI-018",
+      "title": "User avatar and identity color utilities",
+      "module": "Authentication",
+      "phase": "C1",
+      "priority": "P1",
+      "mvp": true,
+      "estimateHours": 2,
+      "prdRefs": ["14"],
+      "description": "Deterministic per-user color derivation and an avatar component with image, initials fallback and online indicator - shared by presence, cursors and comments.",
+      "dependsOn": ["CLI-017"],
+      "dependsOnServer": [],
+      "deliverables": ["src/components/user/UserAvatar.tsx", "src/utils/userColor.ts"],
+      "acceptanceCriteria": [
+        "The same user gets the same color in every browser and session",
+        "Colors have sufficient contrast against both editor themes"
+      ]
+    },
+    {
+      "id": "CLI-019",
+      "title": "Authentication UI tests",
+      "module": "Testing",
+      "phase": "C1",
+      "priority": "P1",
+      "mvp": true,
+      "estimateHours": 4,
+      "prdRefs": ["44"],
+      "description": "RTL tests for login/register validation and submission, guard redirects, and the refresh/queue/logout interceptor behaviour.",
+      "dependsOn": ["CLI-018", "CLI-008"],
+      "dependsOnServer": [],
+      "deliverables": ["src/pages/auth/__tests__/*", "src/services/__tests__/api.refresh.test.ts"],
+      "acceptanceCriteria": [
+        "Concurrent-401 single-refresh behaviour is asserted",
+        "Guard redirect with return-url is asserted"
+      ]
+    },
+    {
+      "id": "CLI-020",
+      "title": "Document service",
+      "module": "DocumentManagement",
+      "phase": "C2",
+      "priority": "P0",
+      "mvp": true,
+      "estimateHours": 4,
+      "prdRefs": ["9", "39", "49"],
+      "description": "services/document.service.ts covering list (with search/sort/scope/paging), get, create, update, delete, archive, restore, duplicate and getState.",
+      "dependsOn": ["CLI-006", "CLI-004"],
+      "dependsOnServer": ["SRV-025", "SRV-026", "SRV-027", "SRV-028", "SRV-029", "SRV-030", "SRV-034"],
+      "deliverables": ["src/services/document.service.ts"],
+      "acceptanceCriteria": [
+        "All query parameters are typed and serialized correctly",
+        "Service is covered by MSW-backed unit tests"
+      ]
+    },
+    {
+      "id": "CLI-021",
+      "title": "Document store and data caching",
+      "module": "DocumentManagement",
+      "phase": "C2",
+      "priority": "P0",
+      "mvp": true,
+      "estimateHours": 4,
+      "prdRefs": ["49"],
+      "description": "store/document.store.ts for the active document and list state, with a query-cache strategy for list refetching, optimistic updates and rollback on failure.",
+      "dependsOn": ["CLI-020"],
+      "dependsOnServer": [],
+      "deliverables": ["src/store/document.store.ts", "src/hooks/useDocument.ts"],
+      "acceptanceCriteria": [
+        "Rename updates the list instantly and rolls back on server rejection",
+        "Navigating back to the dashboard does not refetch unnecessarily"
+      ]
+    },
+    {
+      "id": "CLI-022",
+      "title": "Dashboard layout and document list",
+      "module": "Dashboard",
+      "phase": "C2",
+      "priority": "P0",
+      "mvp": true,
+      "estimateHours": 5,
+      "prdRefs": ["8"],
+      "description": "Dashboard matching the PRD section 8 layout: header with New button, search bar, and a list showing title, relative last-edited time, owner/shared badge and collaborator avatars.",
+      "dependsOn": ["CLI-021", "CLI-018"],
+      "dependsOnServer": ["SRV-025"],
+      "deliverables": ["src/pages/dashboard/DashboardPage.tsx", "components/dashboard/DocumentList.tsx"],
+      "acceptanceCriteria": [
+        "Relative timestamps render as 'Edited 2 min ago' style text",
+        "Rows are keyboard navigable and open on Enter",
+        "Skeleton loading state renders before data arrives"
+      ]
+    },
+    {
+      "id": "CLI-023",
+      "title": "Create document flow",
+      "module": "Dashboard",
+      "phase": "C2",
+      "priority": "P0",
+      "mvp": true,
+      "estimateHours": 2,
+      "prdRefs": ["8", "9"],
+      "description": "New button creates an 'Untitled Document' and navigates straight into the editor with the title field focused for immediate renaming.",
+      "dependsOn": ["CLI-022"],
+      "dependsOnServer": ["SRV-026"],
+      "deliverables": ["useCreateDocument hook", "New button wiring"],
+      "acceptanceCriteria": [
+        "Document is created and opened in under one interaction",
+        "Failure shows an error toast and leaves the user on the dashboard"
+      ]
+    },
+    {
+      "id": "CLI-024",
+      "title": "Search, sort, filter and scope tabs",
+      "module": "Dashboard",
+      "phase": "C2",
+      "priority": "P1",
+      "mvp": true,
+      "estimateHours": 4,
+      "prdRefs": ["8"],
+      "description": "Debounced search input, sort control (recently edited, name, created), and scope tabs for All, Owned by me, Shared with me, Recent and Archived, with state reflected in the URL.",
+      "dependsOn": ["CLI-022"],
+      "dependsOnServer": ["SRV-025"],
+      "deliverables": ["components/dashboard/DocumentFilters.tsx"],
+      "acceptanceCriteria": [
+        "Search is debounced and cancels superseded requests",
+        "Filter state survives a page reload via the URL",
+        "Empty results show a scope-specific empty state"
+      ]
+    },
+    {
+      "id": "CLI-025",
+      "title": "Document row actions (rename, duplicate, archive, delete, restore)",
+      "module": "DocumentManagement",
+      "phase": "C2",
+      "priority": "P1",
+      "mvp": true,
+      "estimateHours": 5,
+      "prdRefs": ["8", "9"],
+      "description": "Context menu per document with inline rename, duplicate, archive, delete with confirmation, and restore for archived items - actions hidden or disabled based on the caller's role.",
+      "dependsOn": ["CLI-024", "CLI-015"],
+      "dependsOnServer": ["SRV-028", "SRV-029", "SRV-030"],
+      "deliverables": ["components/dashboard/DocumentRowMenu.tsx", "ConfirmDialog.tsx"],
+      "acceptanceCriteria": [
+        "Delete requires explicit confirmation naming the document",
+        "Non-owners do not see destructive actions",
+        "Duplicate opens or highlights the new copy"
+      ]
+    },
+    {
+      "id": "CLI-026",
+      "title": "Dashboard empty, loading and error states",
+      "module": "Dashboard",
+      "phase": "C2",
+      "priority": "P2",
+      "mvp": true,
+      "estimateHours": 2,
+      "prdRefs": ["8"],
+      "description": "First-run empty state with a create call-to-action, skeleton list while loading, and a retryable error state.",
+      "dependsOn": ["CLI-025", "CLI-009"],
+      "dependsOnServer": [],
+      "deliverables": ["components/dashboard/EmptyState.tsx"],
+      "acceptanceCriteria": [
+        "A brand new account sees a helpful empty state, not a blank list",
+        "Network failure offers a retry that refetches"
+      ]
+    },
+    {
+      "id": "CLI-027",
+      "title": "Dashboard tests",
+      "module": "Testing",
+      "phase": "C2",
+      "priority": "P1",
+      "mvp": true,
+      "estimateHours": 4,
+      "prdRefs": ["44"],
+      "description": "RTL tests for list rendering, search debounce, scope filtering, row actions and role-based action visibility.",
+      "dependsOn": ["CLI-026"],
+      "dependsOnServer": [],
+      "deliverables": ["src/pages/dashboard/__tests__/*"],
+      "acceptanceCriteria": [
+        "Optimistic rename rollback on failure is asserted",
+        "Viewer role sees no delete action"
+      ]
+    },
+    {
+      "id": "CLI-028",
+      "title": "Tiptap editor integration",
+      "module": "Editor",
+      "phase": "C3",
+      "priority": "P0",
+      "mvp": true,
+      "estimateHours": 5,
+      "prdRefs": ["10"],
+      "description": "Mount a Tiptap editor with StarterKit, editable/read-only modes, focus management and a stable extension registry that collaboration will later extend.",
+      "dependsOn": ["CLI-021", "CLI-002"],
+      "dependsOnServer": [],
+      "deliverables": ["src/components/editor/Editor.tsx", "src/components/editor/extensions/index.ts"],
+      "acceptanceCriteria": [
+        "Editor mounts once per document and disposes cleanly on unmount",
+        "Read-only mode disables all input without unmounting the editor",
+        "Extension list is defined in one place for reuse by collaboration and comments"
+      ]
+    },
+    {
+      "id": "CLI-029",
+      "title": "Full formatting extension set",
+      "module": "Editor",
+      "phase": "C3",
+      "priority": "P0",
+      "mvp": true,
+      "estimateHours": 6,
+      "prdRefs": ["10"],
+      "description": "Enable bold, italic, underline, strike, headings, paragraphs, bullet/ordered lists, task lists, links, code blocks with highlighting, blockquotes, tables, images and horizontal rules, with keyboard shortcuts and input rules.",
+      "dependsOn": ["CLI-028"],
+      "dependsOnServer": [],
+      "deliverables": ["Configured Tiptap extensions", "src/components/editor/extensions/*"],
+      "acceptanceCriteria": [
+        "Every formatting item in PRD section 10 is available and functional",
+        "Markdown-style input rules work (## heading, - list, ``` code)",
+        "Pasting rich content preserves supported formatting and strips the rest"
+      ]
+    },
+    {
+      "id": "CLI-030",
+      "title": "Toolbar and bubble/floating menus",
+      "module": "Editor",
+      "phase": "C3",
+      "priority": "P0",
+      "mvp": true,
+      "estimateHours": 5,
+      "prdRefs": ["10", "30"],
+      "description": "Sticky top toolbar with grouped controls and active-state indicators, a selection bubble menu, and a slash/floating menu on empty lines - with a reserved slot for the AI entry point.",
+      "dependsOn": ["CLI-029"],
+      "dependsOnServer": [],
+      "deliverables": ["components/editor/Toolbar.tsx", "components/editor/BubbleMenu.tsx"],
+      "acceptanceCriteria": [
+        "Toolbar buttons reflect the active mark/node at the cursor",
+        "Toolbar is fully keyboard accessible with visible focus",
+        "Controls are disabled in read-only mode"
+      ]
+    },
+    {
+      "id": "CLI-031",
+      "title": "Tables, images and code block UX",
+      "module": "Editor",
+      "phase": "C3",
+      "priority": "P1",
+      "mvp": true,
+      "estimateHours": 5,
+      "prdRefs": ["10"],
+      "description": "Table insert/resize/row-column controls, image insert with sizing, and code blocks with language selection and syntax highlighting.",
+      "dependsOn": ["CLI-030"],
+      "dependsOnServer": [],
+      "deliverables": ["components/editor/TableControls.tsx", "Image and CodeBlock extension config"],
+      "acceptanceCriteria": [
+        "Tables can be created, resized and have rows/columns added or removed",
+        "Code block language choice persists in the document",
+        "These node types survive a save/reload round trip"
+      ]
+    },
+    {
+      "id": "CLI-032",
+      "title": "Document page shell and title editing",
+      "module": "Editor",
+      "phase": "C3",
+      "priority": "P0",
+      "mvp": true,
+      "estimateHours": 4,
+      "prdRefs": ["9", "10"],
+      "description": "Editor page with header (back navigation, inline title editing, save state, presence slot, Share slot, AI slot, overflow menu) and a centered document canvas.",
+      "dependsOn": ["CLI-030", "CLI-021"],
+      "dependsOnServer": ["SRV-027", "SRV-028"],
+      "deliverables": ["src/pages/document/DocumentPage.tsx", "components/editor/DocumentHeader.tsx"],
+      "acceptanceCriteria": [
+        "Title edits save on blur or Enter and are debounced",
+        "Header slots exist for presence, share, AI and history before those features land",
+        "Layout holds at narrow widths without breaking the canvas"
+      ]
+    },
+    {
+      "id": "CLI-033",
+      "title": "Autosave state machine and save indicator",
+      "module": "Editor",
+      "phase": "C3",
+      "priority": "P0",
+      "mvp": true,
+      "estimateHours": 4,
+      "prdRefs": ["16"],
+      "description": "Track editing/saving/saved/error/offline states driven by local change events and server acknowledgements, surfaced as an 'All changes saved' style indicator.",
+      "dependsOn": ["CLI-032"],
+      "dependsOnServer": ["SRV-035"],
+      "deliverables": ["src/hooks/useSaveState.ts", "components/editor/SaveIndicator.tsx"],
+      "acceptanceCriteria": [
+        "Indicator never claims saved while updates are still unacknowledged",
+        "Unload with unsaved buffered changes warns the user",
+        "Offline is visually distinct from error"
+      ]
+    },
+    {
+      "id": "CLI-034",
+      "title": "Local undo/redo",
+      "module": "Editor",
+      "phase": "C3",
+      "priority": "P0",
+      "mvp": true,
+      "estimateHours": 3,
+      "prdRefs": ["21"],
+      "description": "History with keyboard shortcuts and toolbar buttons, structured so it can be swapped for the Yjs UndoManager when collaboration lands.",
+      "dependsOn": ["CLI-030"],
+      "dependsOnServer": [],
+      "deliverables": ["Undo/redo controls", "History extension configuration"],
+      "acceptanceCriteria": [
+        "Ctrl+Z / Ctrl+Shift+Z work across all formatting operations",
+        "Buttons disable correctly when there is nothing to undo or redo"
+      ]
+    },
+    {
+      "id": "CLI-035",
+      "title": "Editor performance guards",
+      "module": "Editor",
+      "phase": "C3",
+      "priority": "P1",
+      "mvp": true,
+      "estimateHours": 3,
+      "prdRefs": ["46"],
+      "description": "Prevent editor re-render storms: memoized toolbar, throttled selection-derived state, and avoidance of React state updates per keystroke.",
+      "dependsOn": ["CLI-034"],
+      "dependsOnServer": [],
+      "deliverables": ["Memoization and selection-state throttling"],
+      "acceptanceCriteria": [
+        "Typing in a large document keeps input latency imperceptible",
+        "Profiler shows no full-page re-render per keystroke"
+      ]
+    },
+    {
+      "id": "CLI-036",
+      "title": "Editor tests",
+      "module": "Testing",
+      "phase": "C3",
+      "priority": "P1",
+      "mvp": true,
+      "estimateHours": 5,
+      "prdRefs": ["44"],
+      "description": "Tests for formatting commands, toolbar active states, read-only enforcement, title editing and the save state machine.",
+      "dependsOn": ["CLI-035"],
+      "dependsOnServer": [],
+      "deliverables": ["src/components/editor/__tests__/*"],
+      "acceptanceCriteria": [
+        "Every formatting command has at least one assertion",
+        "Read-only mode is asserted to block all edits"
+      ]
+    },
+    {
+      "id": "CLI-037",
+      "title": "Yjs document and ProseMirror binding",
+      "module": "Collaboration",
+      "phase": "C4",
+      "priority": "P0",
+      "mvp": true,
+      "estimateHours": 6,
+      "prdRefs": ["11", "12"],
+      "description": "Create a Y.Doc per document, bind it to Tiptap via the Collaboration extension, replace the local history extension with the Yjs UndoManager, and manage lifecycle so switching documents never leaks a doc.",
+      "dependsOn": ["CLI-028", "CLI-034"],
+      "dependsOnServer": [],
+      "deliverables": ["src/lib/yjs/createYDoc.ts", "Collaboration extension wiring"],
+      "acceptanceCriteria": [
+        "Editing mutates the Y.Doc and the editor stays in sync",
+        "Navigating between documents destroys the previous Y.Doc and its observers",
+        "Client never implements CRDT logic itself - Yjs owns conflict resolution"
+      ]
+    },
+    {
+      "id": "CLI-038",
+      "title": "Custom SignalR Yjs provider",
+      "module": "Collaboration",
+      "phase": "C4",
+      "priority": "P0",
+      "mvp": true,
+      "estimateHours": 10,
+      "prdRefs": ["11", "13", "40"],
+      "description": "A provider that connects the Y.Doc to the SignalR hub: sends local updates via SendDocumentUpdate, applies remote DocumentChanged updates with a non-local origin, performs the initial state handshake and the reconnect sync, and relays awareness.",
+      "dependsOn": ["CLI-037", "CLI-039"],
+      "dependsOnServer": ["SRV-039", "SRV-040", "SRV-045"],
+      "deliverables": ["src/lib/yjs/SignalRProvider.ts"],
+      "acceptanceCriteria": [
+        "Two browsers converge on identical content when editing simultaneously",
+        "Remote updates are applied with a foreign origin so they are excluded from local undo",
+        "Provider survives reconnect without duplicating or dropping updates",
+        "Update payloads are transferred as binary, not base64-inflated JSON, where the transport allows"
+      ]
+    },
+    {
+      "id": "CLI-039",
+      "title": "Collaboration service (hub connection lifecycle)",
+      "module": "Collaboration",
+      "phase": "C4",
+      "priority": "P0",
+      "mvp": true,
+      "estimateHours": 6,
+      "prdRefs": ["13", "40", "49"],
+      "description": "services/collaboration.service.ts building the HubConnection with the access-token factory, automatic reconnect policy, typed event registration and connect/disconnect per document.",
+      "dependsOn": ["CLI-012", "CLI-007"],
+      "dependsOnServer": ["SRV-038", "SRV-039"],
+      "deliverables": ["src/services/collaboration.service.ts", "src/types/hub-events.ts"],
+      "acceptanceCriteria": [
+        "Hub methods and events are strongly typed in one contract file",
+        "Token refresh supplies a fresh token to the connection factory",
+        "Only one connection exists per open document, with handlers cleaned up on close"
+      ]
+    },
+    {
+      "id": "CLI-040",
+      "title": "Collaboration store",
+      "module": "Collaboration",
+      "phase": "C4",
+      "priority": "P0",
+      "mvp": true,
+      "estimateHours": 4,
+      "prdRefs": ["49"],
+      "description": "store/collaboration.store.ts holding connection status, active users, remote cursors, the caller's effective role and lock state, kept out of the per-keystroke hot path.",
+      "dependsOn": ["CLI-039"],
+      "dependsOnServer": [],
+      "deliverables": ["src/store/collaboration.store.ts"],
+      "acceptanceCriteria": [
+        "Presence updates do not re-render the editor content area",
+        "Store resets fully when leaving a document"
+      ]
+    },
+    {
+      "id": "CLI-041",
+      "title": "useCollaboration hook",
+      "module": "Collaboration",
+      "phase": "C4",
+      "priority": "P0",
+      "mvp": true,
+      "estimateHours": 5,
+      "prdRefs": ["49"],
+      "description": "Single hook that wires Y.Doc, provider, hub connection and store together for a document id, returning ready state, connection status and role - the one entry point the editor page uses.",
+      "dependsOn": ["CLI-038", "CLI-040"],
+      "dependsOnServer": [],
+      "deliverables": ["src/hooks/useCollaboration.ts"],
+      "acceptanceCriteria": [
+        "Editor renders only after the initial state sync completes",
+        "Unmount tears down provider, connection and doc with no leaks",
+        "React StrictMode double-mount does not create duplicate connections"
+      ]
+    },
+    {
+      "id": "CLI-042",
+      "title": "Awareness setup (local user state)",
+      "module": "Presence",
+      "phase": "C4",
+      "priority": "P0",
+      "mvp": true,
+      "estimateHours": 4,
+      "prdRefs": ["13", "14"],
+      "description": "Publish local awareness (user id, name, color, cursor, selection, activity) with throttling, and consume remote awareness changes into the collaboration store.",
+      "dependsOn": ["CLI-041", "CLI-018"],
+      "dependsOnServer": ["SRV-041"],
+      "deliverables": ["Awareness integration in SignalRProvider", "src/hooks/usePresence.ts"],
+      "acceptanceCriteria": [
+        "Cursor broadcasts are throttled to a sane rate under fast typing",
+        "Awareness state clears when the user disconnects",
+        "Awareness is never persisted locally or server-side"
+      ]
+    },
+    {
+      "id": "CLI-043",
+      "title": "Remote cursors and selection highlights",
+      "module": "Presence",
+      "phase": "C4",
+      "priority": "P0",
+      "mvp": true,
+      "estimateHours": 6,
+      "prdRefs": ["11", "14"],
+      "description": "CollaborationCursor rendering with per-user color, name label on hover/idle, and selection range highlighting that stays anchored as the document changes.",
+      "dependsOn": ["CLI-042"],
+      "dependsOnServer": ["SRV-041"],
+      "deliverables": ["CollaborationCursor extension config", "cursor styles"],
+      "acceptanceCriteria": [
+        "Remote cursor position stays correct while local text is inserted before it",
+        "Labels do not obscure text while typing",
+        "Colors match the presence bar for the same user"
+      ]
+    },
+    {
+      "id": "CLI-044",
+      "title": "Presence avatar bar",
+      "module": "Presence",
+      "phase": "C4",
+      "priority": "P0",
+      "mvp": true,
+      "estimateHours": 4,
+      "prdRefs": ["14"],
+      "description": "Header component listing active users with avatar, name, online dot and activity (Editing/Viewing), overflow +N popover, and click-to-jump-to-cursor.",
+      "dependsOn": ["CLI-043"],
+      "dependsOnServer": ["SRV-043"],
+      "deliverables": ["components/presence/PresenceBar.tsx"],
+      "acceptanceCriteria": [
+        "Matches the PRD section 14 information set",
+        "A user with two tabs appears once",
+        "Joining and leaving update the bar within a second"
+      ]
+    },
+    {
+      "id": "CLI-045",
+      "title": "Connection status indicator",
+      "module": "Collaboration",
+      "phase": "C4",
+      "priority": "P0",
+      "mvp": true,
+      "estimateHours": 3,
+      "prdRefs": ["17", "46"],
+      "description": "Visible connected/reconnecting/offline indicator with reconnect attempt feedback and a manual retry action.",
+      "dependsOn": ["CLI-044", "CLI-033"],
+      "dependsOnServer": [],
+      "deliverables": ["components/collaboration/ConnectionStatus.tsx"],
+      "acceptanceCriteria": [
+        "Killing the network switches to Offline within a few seconds",
+        "Recovery returns to Connected automatically without a page reload"
+      ]
+    },
+    {
+      "id": "CLI-046",
+      "title": "Collaborative undo/redo",
+      "module": "Collaboration",
+      "phase": "C4",
+      "priority": "P0",
+      "mvp": true,
+      "estimateHours": 5,
+      "prdRefs": ["21"],
+      "description": "Configure the Yjs UndoManager to track only local origins (including accepted AI transactions) so undo never reverts another collaborator's work.",
+      "dependsOn": ["CLI-041", "CLI-034"],
+      "dependsOnServer": [],
+      "deliverables": ["UndoManager configuration", "tracked origins registry"],
+      "acceptanceCriteria": [
+        "User A pressing undo never removes user B's text",
+        "Undo after accepting an AI suggestion removes the AI insertion in one step",
+        "Redo restores exactly what undo removed"
+      ]
+    },
+    {
+      "id": "CLI-047",
+      "title": "Collaboration tests",
+      "module": "Testing",
+      "phase": "C4",
+      "priority": "P0",
+      "mvp": true,
+      "estimateHours": 8,
+      "prdRefs": ["44", "45"],
+      "description": "Tests using two in-memory Y.Docs with a fake transport to assert convergence, awareness propagation, origin-scoped undo and provider teardown.",
+      "dependsOn": ["CLI-046", "CLI-008"],
+      "dependsOnServer": [],
+      "deliverables": ["src/lib/yjs/__tests__/*", "FakeTransport.ts"],
+      "acceptanceCriteria": [
+        "Concurrent edits to the same paragraph converge in tests (PRD section 45 Test 1)",
+        "Undo scope test proves remote changes are untouched",
+        "No test requires a running backend"
+      ]
+    },
+    {
+      "id": "CLI-048",
+      "title": "Local persistence with IndexedDB",
+      "module": "Offline",
+      "phase": "C5",
+      "priority": "P0",
+      "mvp": true,
+      "estimateHours": 5,
+      "prdRefs": ["17"],
+      "description": "Attach y-indexeddb to each document's Y.Doc so content is available instantly on reload and survives a closed tab while offline, with a per-user storage namespace.",
+      "dependsOn": ["CLI-041"],
+      "dependsOnServer": [],
+      "deliverables": ["src/lib/yjs/persistence.ts"],
+      "acceptanceCriteria": [
+        "Reloading offline restores the document with local edits intact",
+        "Logging out clears cached document data for that user",
+        "Local load happens before or alongside the network sync without flicker"
+      ]
+    },
+    {
+      "id": "CLI-049",
+      "title": "Connection loss detection",
+      "module": "Offline",
+      "phase": "C5",
+      "priority": "P0",
+      "mvp": true,
+      "estimateHours": 3,
+      "prdRefs": ["17"],
+      "description": "Combine browser online/offline events with hub connection state and a heartbeat so a silently dead connection is still detected.",
+      "dependsOn": ["CLI-045", "CLI-048"],
+      "dependsOnServer": [],
+      "deliverables": ["src/hooks/useConnectionState.ts"],
+      "acceptanceCriteria": [
+        "A dropped WebSocket with the network still 'online' is detected",
+        "State transitions are debounced so brief blips do not flap the UI"
+      ]
+    },
+    {
+      "id": "CLI-050",
+      "title": "Offline update queue",
+      "module": "Offline",
+      "phase": "C5",
+      "priority": "P0",
+      "mvp": true,
+      "estimateHours": 5,
+      "prdRefs": ["17"],
+      "description": "While disconnected, keep editing locally and let Yjs accumulate state; on reconnect send the diff computed from the server's state vector rather than replaying every individual update.",
+      "dependsOn": ["CLI-049", "CLI-038"],
+      "dependsOnServer": ["SRV-045"],
+      "deliverables": ["Offline queue logic in SignalRProvider"],
+      "acceptanceCriteria": [
+        "Ten minutes of offline editing syncs in a single diff exchange",
+        "No local edit is lost across the offline window",
+        "Queue is bounded and cannot exhaust memory in a long session"
+      ]
+    },
+    {
+      "id": "CLI-051",
+      "title": "Automatic reconnection and resync",
+      "module": "Offline",
+      "phase": "C5",
+      "priority": "P0",
+      "mvp": true,
+      "estimateHours": 5,
+      "prdRefs": ["17", "46"],
+      "description": "Exponential backoff reconnect with jitter, automatic rejoin of the document group, state-vector resync, and awareness re-publication.",
+      "dependsOn": ["CLI-050"],
+      "dependsOnServer": ["SRV-045", "SRV-039"],
+      "deliverables": ["Reconnect policy in collaboration.service.ts", "Resync routine"],
+      "acceptanceCriteria": [
+        "Reconnect after a server restart succeeds without user action",
+        "Post-reconnect content matches every other connected client",
+        "Presence reappears for the reconnected user"
+      ]
+    },
+    {
+      "id": "CLI-052",
+      "title": "Offline UI affordances",
+      "module": "Offline",
+      "phase": "C5",
+      "priority": "P1",
+      "mvp": true,
+      "estimateHours": 3,
+      "prdRefs": ["17"],
+      "description": "Offline banner explaining that editing continues locally, pending-change count, syncing state on reconnect, and a completion confirmation.",
+      "dependsOn": ["CLI-051", "CLI-033"],
+      "dependsOnServer": [],
+      "deliverables": ["components/collaboration/OfflineBanner.tsx"],
+      "acceptanceCriteria": [
+        "The user is never told 'saved' while offline changes are unsynced",
+        "Sync completion is explicitly confirmed",
+        "Banner does not obstruct the editing area"
+      ]
+    },
+    {
+      "id": "CLI-053",
+      "title": "Offline and reconnection tests",
+      "module": "Testing",
+      "phase": "C5",
+      "priority": "P0",
+      "mvp": true,
+      "estimateHours": 6,
+      "prdRefs": ["44", "45"],
+      "description": "Simulate disconnect, offline divergence between two clients, and reconnect merge; assert final convergence and preserved edits (PRD section 45 Tests 3, 4 and 5).",
+      "dependsOn": ["CLI-052", "CLI-047"],
+      "dependsOnServer": [],
+      "deliverables": ["src/lib/yjs/__tests__/offline.test.ts"],
+      "acceptanceCriteria": [
+        "Two clients editing the same text while disconnected converge on reconnect",
+        "Mid-edit disconnect loses nothing",
+        "Reconnect with pending changes broadcasts them to peers"
+      ]
+    },
+    {
+      "id": "CLI-054",
+      "title": "Comment anchoring in the editor",
+      "module": "Comments",
+      "phase": "C6",
+      "priority": "P0",
+      "mvp": true,
+      "estimateHours": 6,
+      "prdRefs": ["22"],
+      "description": "Custom comment mark backed by Yjs relative positions so highlights stay attached to the right text as the document changes, including when edited by others.",
+      "dependsOn": ["CLI-041", "CLI-029"],
+      "dependsOnServer": ["SRV-060"],
+      "deliverables": ["extensions/CommentMark.ts", "src/lib/yjs/relativePositions.ts"],
+      "acceptanceCriteria": [
+        "A comment stays on its text after another user inserts a paragraph above it",
+        "Deleting the commented text marks the comment orphaned rather than crashing",
+        "Anchors survive a reload"
+      ]
+    },
+    {
+      "id": "CLI-055",
+      "title": "Comment service and store",
+      "module": "Comments",
+      "phase": "C6",
+      "priority": "P0",
+      "mvp": true,
+      "estimateHours": 4,
+      "prdRefs": ["22", "39"],
+      "description": "comment.service.ts and a comment store covering list, create, update, delete, reply, resolve and reopen with optimistic updates.",
+      "dependsOn": ["CLI-054", "CLI-020"],
+      "dependsOnServer": ["SRV-061", "SRV-062", "SRV-063"],
+      "deliverables": ["src/services/comment.service.ts", "src/store/comment.store.ts"],
+      "acceptanceCriteria": [
+        "Optimistic comment appears instantly and rolls back on failure",
+        "Store keys comments by anchor for fast editor lookup"
+      ]
+    },
+    {
+      "id": "CLI-056",
+      "title": "Comment sidebar and thread UI",
+      "module": "Comments",
+      "phase": "C6",
+      "priority": "P0",
+      "mvp": true,
+      "estimateHours": 6,
+      "prdRefs": ["22"],
+      "description": "Right sidebar listing threads with quoted text, author avatar, timestamp and replies; clicking a thread scrolls to and highlights its anchor and vice versa.",
+      "dependsOn": ["CLI-055", "CLI-018"],
+      "dependsOnServer": ["SRV-061"],
+      "deliverables": ["components/comments/CommentSidebar.tsx", "components/comments/CommentThread.tsx"],
+      "acceptanceCriteria": [
+        "Selecting a highlight in the document focuses its thread",
+        "Threads are ordered by document position, not creation time",
+        "Sidebar collapses without disturbing the editor layout"
+      ]
+    },
+    {
+      "id": "CLI-057",
+      "title": "Create comment from selection",
+      "module": "Comments",
+      "phase": "C6",
+      "priority": "P0",
+      "mvp": true,
+      "estimateHours": 4,
+      "prdRefs": ["22"],
+      "description": "Comment action in the bubble menu opening a composer prefilled with the quoted selection, applying the mark on submit.",
+      "dependsOn": ["CLI-056", "CLI-030"],
+      "dependsOnServer": ["SRV-061"],
+      "deliverables": ["components/comments/CommentComposer.tsx"],
+      "acceptanceCriteria": [
+        "Comment action is hidden for Viewer role",
+        "Cancelling the composer leaves no orphan mark",
+        "Escape closes the composer and restores selection"
+      ]
+    },
+    {
+      "id": "CLI-058",
+      "title": "Replies, edit and delete",
+      "module": "Comments",
+      "phase": "C6",
+      "priority": "P0",
+      "mvp": true,
+      "estimateHours": 4,
+      "prdRefs": ["22"],
+      "description": "Inline reply box per thread, edit-in-place for own comments, and delete with confirmation, with actions gated by authorship and role.",
+      "dependsOn": ["CLI-057"],
+      "dependsOnServer": ["SRV-062"],
+      "deliverables": ["Reply/edit/delete controls in CommentThread"],
+      "acceptanceCriteria": [
+        "Users can only edit or delete their own comments unless they own the document",
+        "Deleting a parent removes its replies from the UI immediately"
+      ]
+    },
+    {
+      "id": "CLI-059",
+      "title": "Resolve, reopen and thread filtering",
+      "module": "Comments",
+      "phase": "C6",
+      "priority": "P1",
+      "mvp": true,
+      "estimateHours": 3,
+      "prdRefs": ["22"],
+      "description": "Resolve button that collapses the thread and removes its highlight, a Show resolved toggle, and reopen support.",
+      "dependsOn": ["CLI-058"],
+      "dependsOnServer": ["SRV-063"],
+      "deliverables": ["Resolve controls + filter toggle"],
+      "acceptanceCriteria": [
+        "Resolved threads are hidden by default and their highlights removed",
+        "Reopening restores the highlight at the original anchor"
+      ]
+    },
+    {
+      "id": "CLI-060",
+      "title": "@mention autocomplete",
+      "module": "Comments",
+      "phase": "C6",
+      "priority": "P1",
+      "mvp": true,
+      "estimateHours": 5,
+      "prdRefs": ["23"],
+      "description": "Typing @ in a comment opens a keyboard-navigable member picker scoped to document members, inserting a mention token rendered as a chip.",
+      "dependsOn": ["CLI-059"],
+      "dependsOnServer": ["SRV-064"],
+      "deliverables": ["components/comments/MentionAutocomplete.tsx"],
+      "acceptanceCriteria": [
+        "Only document members are suggested",
+        "Arrow keys and Enter select without leaving the composer",
+        "Mentions render distinctly in the saved comment"
+      ]
+    },
+    {
+      "id": "CLI-061",
+      "title": "Real-time comment synchronization",
+      "module": "Comments",
+      "phase": "C6",
+      "priority": "P1",
+      "mvp": true,
+      "estimateHours": 3,
+      "prdRefs": ["13", "22"],
+      "description": "Subscribe to CommentAdded/Updated/Deleted/Resolved hub events and reconcile them into the comment store without clobbering local optimistic state.",
+      "dependsOn": ["CLI-060", "CLI-039"],
+      "dependsOnServer": ["SRV-065"],
+      "deliverables": ["Comment hub event handlers"],
+      "acceptanceCriteria": [
+        "A comment added by another user appears without a refresh",
+        "A remote event for a locally pending comment does not duplicate it"
+      ]
+    },
+    {
+      "id": "CLI-062",
+      "title": "Comment tests",
+      "module": "Testing",
+      "phase": "C6",
+      "priority": "P1",
+      "mvp": true,
+      "estimateHours": 5,
+      "prdRefs": ["44"],
+      "description": "Tests for anchor stability under concurrent edits, thread CRUD, resolve filtering, mention picker and role gating.",
+      "dependsOn": ["CLI-061"],
+      "dependsOnServer": [],
+      "deliverables": ["src/components/comments/__tests__/*"],
+      "acceptanceCriteria": [
+        "Anchor-drift test inserts text before a comment and asserts it stays attached",
+        "Viewer cannot open the comment composer"
+      ]
+    },
+    {
+      "id": "CLI-063",
+      "title": "Share dialog",
+      "module": "SharingPermissions",
+      "phase": "C7",
+      "priority": "P0",
+      "mvp": true,
+      "estimateHours": 5,
+      "prdRefs": ["24"],
+      "description": "Share dialog matching PRD section 24: email input, role selector, Send Invitation action, current member list and share-link section.",
+      "dependsOn": ["CLI-032", "CLI-015"],
+      "dependsOnServer": ["SRV-051", "SRV-054"],
+      "deliverables": ["components/sharing/ShareDialog.tsx"],
+      "acceptanceCriteria": [
+        "Share button is only enabled for the Owner",
+        "Email validation happens before submit",
+        "Dialog is fully keyboard operable and traps focus"
+      ]
+    },
+    {
+      "id": "CLI-064",
+      "title": "Member list management",
+      "module": "SharingPermissions",
+      "phase": "C7",
+      "priority": "P0",
+      "mvp": true,
+      "estimateHours": 4,
+      "prdRefs": ["24", "27"],
+      "description": "List members with avatar, email and role dropdown; allow role changes and removal, with the owner row protected and pending invitations shown separately.",
+      "dependsOn": ["CLI-063"],
+      "dependsOnServer": ["SRV-051"],
+      "deliverables": ["components/sharing/MemberList.tsx"],
+      "acceptanceCriteria": [
+        "Owner row cannot be demoted or removed in the UI",
+        "Role change reflects immediately with rollback on failure",
+        "Pending invitations are visually distinct from accepted members"
+      ]
+    },
+    {
+      "id": "CLI-065",
+      "title": "Invitation landing page",
+      "module": "SharingPermissions",
+      "phase": "C7",
+      "priority": "P0",
+      "mvp": true,
+      "estimateHours": 5,
+      "prdRefs": ["25"],
+      "description": "Public /invite/{token} route showing the document title, inviter and granted role, routing unauthenticated users through login/register and returning them to accept.",
+      "dependsOn": ["CLI-064", "CLI-014"],
+      "dependsOnServer": ["SRV-055"],
+      "deliverables": ["src/pages/invite/InvitePage.tsx"],
+      "acceptanceCriteria": [
+        "A brand new user can register from the link and land inside the document",
+        "Expired or already-used tokens show a clear, non-technical message",
+        "Accepting navigates straight into the document"
+      ]
+    },
+    {
+      "id": "CLI-066",
+      "title": "Share link UI",
+      "module": "SharingPermissions",
+      "phase": "C7",
+      "priority": "P1",
+      "mvp": true,
+      "estimateHours": 4,
+      "prdRefs": ["28"],
+      "description": "Enable/disable a link, choose Viewer or Editor access, copy to clipboard with confirmation, and regenerate the token.",
+      "dependsOn": ["CLI-065"],
+      "dependsOnServer": ["SRV-056"],
+      "deliverables": ["components/sharing/ShareLinkPanel.tsx"],
+      "acceptanceCriteria": [
+        "Disabling the link is reflected instantly and the URL stops working",
+        "Copy action gives explicit feedback",
+        "The UI states plainly what access the link grants"
+      ]
+    },
+    {
+      "id": "CLI-067",
+      "title": "Permission-aware editor UI",
+      "module": "SharingPermissions",
+      "phase": "C7",
+      "priority": "P0",
+      "mvp": true,
+      "estimateHours": 5,
+      "prdRefs": ["27"],
+      "description": "Drive editor capability from the server-provided effective role: Viewer gets read-only with no toolbar, Commenter gets read-only plus commenting, Editor and Owner get full editing plus AI.",
+      "dependsOn": ["CLI-066", "CLI-041", "CLI-057"],
+      "dependsOnServer": ["SRV-039", "SRV-057"],
+      "deliverables": ["Role-driven capability layer in the editor page"],
+      "acceptanceCriteria": [
+        "Viewer cannot type, paste or drop content into the document",
+        "Commenter can create comments but not edit content",
+        "A read-only badge explains the current access level"
+      ]
+    },
+    {
+      "id": "CLI-068",
+      "title": "Live permission change handling",
+      "module": "SharingPermissions",
+      "phase": "C7",
+      "priority": "P1",
+      "mvp": true,
+      "estimateHours": 4,
+      "prdRefs": ["27", "45"],
+      "description": "React to PermissionChanged and removal events mid-session: downgrade to read-only in place, or eject to the dashboard with an explanation, flushing pending edits first.",
+      "dependsOn": ["CLI-067", "CLI-039"],
+      "dependsOnServer": ["SRV-058"],
+      "deliverables": ["PermissionChanged handler in useCollaboration"],
+      "acceptanceCriteria": [
+        "Demotion to Viewer while typing stops editing without losing already-synced work",
+        "Access revocation redirects with a clear message, not a raw error",
+        "Covers PRD section 45 Test 8 from the client side"
+      ]
+    },
+    {
+      "id": "CLI-069",
+      "title": "Sharing and permissions tests",
+      "module": "Testing",
+      "phase": "C7",
+      "priority": "P1",
+      "mvp": true,
+      "estimateHours": 4,
+      "prdRefs": ["44"],
+      "description": "Tests for the share dialog, member role changes, invitation landing states and role-driven editor capability.",
+      "dependsOn": ["CLI-068"],
+      "dependsOnServer": [],
+      "deliverables": ["src/components/sharing/__tests__/*"],
+      "acceptanceCriteria": [
+        "Each of the four roles has an editor-capability assertion",
+        "Expired invitation state is asserted"
+      ]
+    },
+    {
+      "id": "CLI-070",
+      "title": "Version service and history panel",
+      "module": "Versioning",
+      "phase": "C8",
+      "priority": "P0",
+      "mvp": true,
+      "estimateHours": 5,
+      "prdRefs": ["18", "19"],
+      "description": "version.service.ts plus a revision history panel grouped by Today/Yesterday/date showing author, change type and time, matching the PRD section 19 tree layout.",
+      "dependsOn": ["CLI-032", "CLI-020"],
+      "dependsOnServer": ["SRV-069"],
+      "deliverables": ["src/services/version.service.ts", "components/versions/HistoryPanel.tsx"],
+      "acceptanceCriteria": [
+        "AI-generated versions are visually labelled as such",
+        "Grouping headers match the PRD example",
+        "Long histories load incrementally"
+      ]
+    },
+    {
+      "id": "CLI-071",
+      "title": "Version preview",
+      "module": "Versioning",
+      "phase": "C8",
+      "priority": "P0",
+      "mvp": true,
+      "estimateHours": 4,
+      "prdRefs": ["19"],
+      "description": "Selecting a version renders its content read-only in the main canvas with a banner indicating a historical view and a way back to the live document.",
+      "dependsOn": ["CLI-070"],
+      "dependsOnServer": ["SRV-069"],
+      "deliverables": ["components/versions/VersionPreview.tsx"],
+      "acceptanceCriteria": [
+        "Preview cannot be edited and does not emit Yjs updates",
+        "Returning to live restores the collaborative session without a reload",
+        "The banner makes it unmistakable that this is history"
+      ]
+    },
+    {
+      "id": "CLI-072",
+      "title": "Restore version flow",
+      "module": "Versioning",
+      "phase": "C8",
+      "priority": "P0",
+      "mvp": true,
+      "estimateHours": 4,
+      "prdRefs": ["18", "19", "45"],
+      "description": "Restore action with a confirmation explaining that all collaborators will see the restored content, followed by handling the DocumentRestored broadcast for everyone in the room.",
+      "dependsOn": ["CLI-071"],
+      "dependsOnServer": ["SRV-070"],
+      "deliverables": ["Restore control + DocumentRestored handler"],
+      "acceptanceCriteria": [
+        "All connected clients converge on the restored content without a reload",
+        "Restore is undoable via normal undo",
+        "Non-editors do not see the restore action"
+      ]
+    },
+    {
+      "id": "CLI-073",
+      "title": "Version comparison view",
+      "module": "Versioning",
+      "phase": "C8",
+      "priority": "P2",
+      "mvp": false,
+      "estimateHours": 6,
+      "prdRefs": ["19"],
+      "description": "Side-by-side or inline diff highlighting additions and deletions between two selected versions.",
+      "dependsOn": ["CLI-072"],
+      "dependsOnServer": ["SRV-071"],
+      "deliverables": ["components/versions/VersionCompare.tsx"],
+      "acceptanceCriteria": [
+        "Additions and deletions are distinguishable without relying on color alone",
+        "Large diffs remain scrollable and performant"
+      ]
+    },
+    {
+      "id": "CLI-074",
+      "title": "Versioning tests",
+      "module": "Testing",
+      "phase": "C8",
+      "priority": "P1",
+      "mvp": true,
+      "estimateHours": 3,
+      "prdRefs": ["44"],
+      "description": "Tests for history grouping, preview read-only enforcement and the restore confirmation flow.",
+      "dependsOn": ["CLI-072"],
+      "dependsOnServer": [],
+      "deliverables": ["src/components/versions/__tests__/*"],
+      "acceptanceCriteria": [
+        "Preview mode is asserted to reject edits",
+        "Restore requires confirmation before firing the request"
+      ]
+    },
+    {
+      "id": "CLI-075",
+      "title": "Soft lock indicators",
+      "module": "Locking",
+      "phase": "C9",
+      "priority": "P2",
+      "mvp": false,
+      "estimateHours": 3,
+      "prdRefs": ["29"],
+      "description": "Informational markers showing which section another user is currently editing, derived from awareness, without blocking input.",
+      "dependsOn": ["CLI-043"],
+      "dependsOnServer": ["SRV-073"],
+      "deliverables": ["components/locking/SoftLockHint.tsx"],
+      "acceptanceCriteria": [
+        "Hint reads like the PRD example and disappears when the user moves away",
+        "Hints never block typing"
+      ]
+    },
+    {
+      "id": "CLI-076",
+      "title": "Hard lock banner and editor disable",
+      "module": "Locking",
+      "phase": "C9",
+      "priority": "P2",
+      "mvp": false,
+      "estimateHours": 4,
+      "prdRefs": ["29"],
+      "description": "On DocumentLocked, show who holds the lock and until when, and switch non-holders to read-only; restore editing on DocumentUnlocked.",
+      "dependsOn": ["CLI-075", "CLI-067"],
+      "dependsOnServer": ["SRV-074", "SRV-075"],
+      "deliverables": ["components/locking/LockBanner.tsx", "Lock event handlers"],
+      "acceptanceCriteria": [
+        "Locking mid-session disables editing for others within a second",
+        "The lock holder keeps editing uninterrupted",
+        "Unlock restores editing without a reload"
+      ]
+    },
+    {
+      "id": "CLI-077",
+      "title": "Lock controls for owner",
+      "module": "Locking",
+      "phase": "C9",
+      "priority": "P2",
+      "mvp": false,
+      "estimateHours": 2,
+      "prdRefs": ["29"],
+      "description": "Owner menu items to lock and unlock the document, with expiry display and renewal.",
+      "dependsOn": ["CLI-076"],
+      "dependsOnServer": ["SRV-074"],
+      "deliverables": ["Lock controls in the document overflow menu"],
+      "acceptanceCriteria": [
+        "Only the owner sees lock controls",
+        "Remaining lock time is visible to the holder"
+      ]
+    },
+    {
+      "id": "CLI-078",
+      "title": "AI service and useAI hook",
+      "module": "AIAssistant",
+      "phase": "C10",
+      "priority": "P0",
+      "mvp": true,
+      "estimateHours": 4,
+      "prdRefs": ["30", "32", "49"],
+      "description": "ai.service.ts covering all Phase 1 operations plus a useAI hook managing request state, cancellation and error mapping.",
+      "dependsOn": ["CLI-006", "CLI-004"],
+      "dependsOnServer": ["SRV-081"],
+      "deliverables": ["src/services/ai.service.ts", "src/hooks/useAI.ts"],
+      "acceptanceCriteria": [
+        "Every operation is typed with a shared request/response shape",
+        "An in-flight request can be cancelled and aborts the network call",
+        "AI_SERVICE_UNAVAILABLE and AI_QUOTA_EXCEEDED map to distinct user messages"
+      ]
+    },
+    {
+      "id": "CLI-079",
+      "title": "AI toolbar menu",
+      "module": "AIAssistant",
+      "phase": "C10",
+      "priority": "P0",
+      "mvp": true,
+      "estimateHours": 4,
+      "prdRefs": ["30"],
+      "description": "Sparkle AI button opening the PRD section 30 menu (Generate, Rewrite, Improve, Summarize, Expand, Shorten, Fix Grammar, Change Tone, Continue), with a tone submenu and selection-aware enabling.",
+      "dependsOn": ["CLI-078", "CLI-030"],
+      "dependsOnServer": ["SRV-081"],
+      "deliverables": ["components/ai/AIMenu.tsx"],
+      "acceptanceCriteria": [
+        "Selection-dependent operations are disabled with no selection",
+        "The menu is hidden entirely for Viewer and Commenter roles",
+        "Keyboard navigation works throughout the menu"
+      ]
+    },
+    {
+      "id": "CLI-080",
+      "title": "AI selection popover",
+      "module": "AIAssistant",
+      "phase": "C10",
+      "priority": "P0",
+      "mvp": true,
+      "estimateHours": 3,
+      "prdRefs": ["31"],
+      "description": "Selecting text surfaces a quick AI action popover in the bubble menu with the most common operations and a free-form instruction field.",
+      "dependsOn": ["CLI-079"],
+      "dependsOnServer": ["SRV-081"],
+      "deliverables": ["components/ai/AISelectionPopover.tsx"],
+      "acceptanceCriteria": [
+        "Popover does not obstruct the selected text",
+        "Escape dismisses it and restores the selection intact"
+      ]
+    },
+    {
+      "id": "CLI-081",
+      "title": "AI result preview with Accept / Reject / Regenerate",
+      "module": "AIAssistant",
+      "phase": "C10",
+      "priority": "P0",
+      "mvp": true,
+      "estimateHours": 5,
+      "prdRefs": ["31"],
+      "description": "Preview panel showing original versus generated text with Accept, Reject and Regenerate actions, matching the PRD section 31 workflow.",
+      "dependsOn": ["CLI-080"],
+      "dependsOnServer": ["SRV-081"],
+      "deliverables": ["components/ai/AIPreviewPanel.tsx"],
+      "acceptanceCriteria": [
+        "Nothing is written into the document until Accept is pressed",
+        "Reject leaves the document byte-identical",
+        "Regenerate reuses the same selection and operation"
+      ]
+    },
+    {
+      "id": "CLI-082",
+      "title": "Accept AI output as a Yjs transaction",
+      "module": "AIAssistant",
+      "phase": "C10",
+      "priority": "P0",
+      "mvp": true,
+      "estimateHours": 5,
+      "prdRefs": ["21", "32"],
+      "description": "Apply accepted AI content through a single tagged Yjs transaction so it flows to collaborators via SignalR and is undoable in one step, correctly resolving the target range even if the document shifted during generation.",
+      "dependsOn": ["CLI-081", "CLI-046"],
+      "dependsOnServer": ["SRV-040"],
+      "deliverables": ["applyAiResult.ts", "AI transaction origin tag"],
+      "acceptanceCriteria": [
+        "Other collaborators see the AI insertion in real time",
+        "A single undo removes the entire AI insertion",
+        "If the anchored range was edited during generation, the user is warned instead of overwriting the wrong text",
+        "Covers PRD section 45 Test 6 from the client side"
+      ]
+    },
+    {
+      "id": "CLI-083",
+      "title": "Streaming AI output rendering",
+      "module": "AIAssistant",
+      "phase": "C10",
+      "priority": "P1",
+      "mvp": false,
+      "estimateHours": 4,
+      "prdRefs": ["31", "32"],
+      "description": "Render tokens progressively in the preview panel as they stream, with a stop button that cancels generation.",
+      "dependsOn": ["CLI-082"],
+      "dependsOnServer": ["SRV-082"],
+      "deliverables": ["Streaming consumer in useAI"],
+      "acceptanceCriteria": [
+        "Text appears progressively rather than after a long blank wait",
+        "Stop cancels the server call, not just the UI",
+        "A stopped partial result can still be accepted or rejected"
+      ]
+    },
+    {
+      "id": "CLI-084",
+      "title": "AI loading, error and quota states",
+      "module": "AIAssistant",
+      "phase": "C10",
+      "priority": "P0",
+      "mvp": true,
+      "estimateHours": 3,
+      "prdRefs": ["31", "42"],
+      "description": "Skeleton/spinner during generation, retryable error state, offline guard, and clear messaging for quota and service-unavailable errors.",
+      "dependsOn": ["CLI-083", "CLI-009"],
+      "dependsOnServer": ["SRV-080"],
+      "deliverables": ["AI state components"],
+      "acceptanceCriteria": [
+        "Ollama being down shows a human message, not a raw 503",
+        "AI actions are disabled while offline",
+        "The editor stays fully usable during generation"
+      ]
+    },
+    {
+      "id": "CLI-085",
+      "title": "AI Phase 2 document-aware UI",
+      "module": "AIAssistant",
+      "phase": "C10",
+      "priority": "P2",
+      "mvp": false,
+      "estimateHours": 6,
+      "prdRefs": ["34", "35"],
+      "description": "Ask-about-document chat panel, whole-document summary, outline generation, action items and meeting notes, with insert-into-document actions and source references when RAG is enabled.",
+      "dependsOn": ["CLI-084"],
+      "dependsOnServer": ["SRV-083", "SRV-089"],
+      "deliverables": ["components/ai/AskDocumentPanel.tsx", "components/ai/AITools.tsx"],
+      "acceptanceCriteria": [
+        "Answers show which parts of the document they came from when RAG is on",
+        "Generated outlines and action items insert as proper document nodes",
+        "The panel is behind a feature flag so it can ship dark"
+      ]
+    },
+    {
+      "id": "CLI-086",
+      "title": "AI UI tests",
+      "module": "Testing",
+      "phase": "C10",
+      "priority": "P0",
+      "mvp": true,
+      "estimateHours": 5,
+      "prdRefs": ["44"],
+      "description": "Tests for the AI menu gating, preview accept/reject/regenerate flow, single-transaction insertion, undo behaviour and error states, with the AI service mocked.",
+      "dependsOn": ["CLI-085"],
+      "dependsOnServer": [],
+      "deliverables": ["src/components/ai/__tests__/*"],
+      "acceptanceCriteria": [
+        "Reject is asserted to leave the document unchanged",
+        "Accept-then-undo is asserted to remove the insertion in one step",
+        "Viewer role sees no AI entry points"
+      ]
+    },
+    {
+      "id": "CLI-087",
+      "title": "Notification center",
+      "module": "Notifications",
+      "phase": "C11",
+      "priority": "P1",
+      "mvp": true,
+      "estimateHours": 5,
+      "prdRefs": ["23", "25"],
+      "description": "Header bell with unread badge, dropdown list of notifications (mentions, invitations, role changes), deep links to the source, and mark-read/mark-all-read - updating live over the hub.",
+      "dependsOn": ["CLI-039", "CLI-018"],
+      "dependsOnServer": ["SRV-090", "SRV-091"],
+      "deliverables": ["components/notifications/NotificationCenter.tsx", "src/services/notification.service.ts"],
+      "acceptanceCriteria": [
+        "A new mention increments the badge without a refresh",
+        "Clicking a mention notification opens the document scrolled to that comment",
+        "Opening the dropdown marks items read per the chosen policy"
+      ]
+    },
+    {
+      "id": "CLI-088",
+      "title": "Keyboard shortcuts and command palette",
+      "module": "AppShell",
+      "phase": "C11",
+      "priority": "P2",
+      "mvp": false,
+      "estimateHours": 4,
+      "prdRefs": ["10"],
+      "description": "Global shortcuts (new document, search, save/flush, toggle comments, toggle history, open AI) plus a discoverable shortcuts help dialog.",
+      "dependsOn": ["CLI-087"],
+      "dependsOnServer": [],
+      "deliverables": ["src/hooks/useShortcuts.ts", "ShortcutsDialog.tsx"],
+      "acceptanceCriteria": [
+        "Shortcuts do not fire while typing in inputs or the editor where they would conflict",
+        "A help dialog lists every binding"
+      ]
+    },
+    {
+      "id": "CLI-089",
+      "title": "Responsive layout",
+      "module": "AppShell",
+      "phase": "C11",
+      "priority": "P2",
+      "mvp": false,
+      "estimateHours": 5,
+      "prdRefs": ["8", "10"],
+      "description": "Adapt dashboard, editor, comment sidebar and history panel for tablet and mobile widths using drawers instead of fixed side panels.",
+      "dependsOn": ["CLI-088"],
+      "dependsOnServer": [],
+      "deliverables": ["Responsive breakpoints and drawer variants"],
+      "acceptanceCriteria": [
+        "Editing is usable at 768px with no horizontal scroll",
+        "Comment and history panels become drawers on small screens",
+        "Presence bar collapses gracefully"
+      ]
+    },
+    {
+      "id": "CLI-090",
+      "title": "Accessibility pass",
+      "module": "AppShell",
+      "phase": "C11",
+      "priority": "P2",
+      "mvp": false,
+      "estimateHours": 5,
+      "prdRefs": ["10"],
+      "description": "Keyboard reachability for all controls, focus management in dialogs and menus, ARIA labels and live regions for presence and save state, and contrast verification including cursor colors.",
+      "dependsOn": ["CLI-089"],
+      "dependsOnServer": [],
+      "deliverables": ["a11y fixes across components", "docs/accessibility.md"],
+      "acceptanceCriteria": [
+        "The full create-edit-comment-share flow is completable by keyboard alone",
+        "Automated a11y checks report no critical violations",
+        "Save state changes are announced to screen readers"
+      ]
+    },
+    {
+      "id": "CLI-091",
+      "title": "Frontend performance optimization",
+      "module": "AppShell",
+      "phase": "C11",
+      "priority": "P1",
+      "mvp": false,
+      "estimateHours": 6,
+      "prdRefs": ["15", "46"],
+      "description": "Route-level code splitting, virtualized long lists, throttled awareness rendering, memoized presence and comment components, and bundle analysis with a size budget.",
+      "dependsOn": ["CLI-090", "CLI-035"],
+      "dependsOnServer": [],
+      "deliverables": ["Bundle analysis report", "Virtualized list components"],
+      "acceptanceCriteria": [
+        "Typing stays smooth with 20+ active collaborators and live cursors",
+        "Initial bundle stays within the documented budget",
+        "A 200-document dashboard scrolls without jank"
+      ]
+    },
+    {
+      "id": "CLI-092",
+      "title": "Multi-user manual verification matrix",
+      "module": "Testing",
+      "phase": "C12",
+      "priority": "P0",
+      "mvp": true,
+      "estimateHours": 8,
+      "prdRefs": ["45"],
+      "description": "Documented manual pass over the nine PRD section 45 scenarios with real browsers, covering convergence, presence, offline merge, AI-during-edit, locking, permission loss and restore.",
+      "dependsOn": ["CLI-086", "CLI-072", "CLI-068", "CLI-053"],
+      "dependsOnServer": ["SRV-094"],
+      "deliverables": ["docs/manual-test-matrix.md", "results log"],
+      "acceptanceCriteria": [
+        "All nine scenarios are executed with at least two real browser sessions and results recorded",
+        "Any divergence or lost update is filed as a blocking defect",
+        "Five-user simultaneous editing is verified"
+      ]
+    },
+    {
+      "id": "CLI-093",
+      "title": "Production build, Docker image and CI",
+      "module": "DevOps",
+      "phase": "C12",
+      "priority": "P1",
+      "mvp": false,
+      "estimateHours": 5,
+      "prdRefs": ["47"],
+      "description": "Production Vite build with runtime-injectable API URLs, an nginx-served Docker image, a frontend service in docker-compose, and a CI workflow running lint, typecheck, tests and build.",
+      "dependsOn": ["CLI-092"],
+      "dependsOnServer": ["SRV-099"],
+      "deliverables": ["Dockerfile", "nginx.conf", ".github/workflows/frontend.yml"],
+      "acceptanceCriteria": [
+        "The image runs against a different API URL without a rebuild",
+        "SPA deep links resolve correctly through nginx",
+        "CI blocks merges on lint, typecheck or test failure"
+      ]
+    }
+  ]
+}

@@ -1,0 +1,463 @@
+// ============================================================================
+//  SyncNote — Entity Relationship Model
+//  Format : DBML (Database Markup Language)
+//  View   : https://dbdiagram.io/d  -> paste this file   (or: npx @dbml/cli)
+//  Source : Prd.md sections 36-37, tasks.server.json
+//           (SRV-013, 022, 033, 052, 056, 062, 067, 073, 076, 090, 092)
+//
+//  Conventions
+//    - snake_case tables/columns  -> EF Core maps via a global naming convention
+//    - uuid v7 surrogate keys     -> sortable, index-friendly, not enumerable
+//    - timestamptz everywhere     -> SQL Server equivalent: datetimeoffset(7)
+//    - bytea for CRDT payloads    -> SQL Server equivalent: varbinary(max)
+//    - jsonb for open metadata    -> SQL Server equivalent: nvarchar(max)
+//    - enums stored as smallint   -> the C# enum is the source of truth
+//    - soft delete via deleted_at -> EF Core global query filter
+// ============================================================================
+
+
+// ─────────────────────────── ENUMS (stored as smallint) ─────────────────────
+
+Enum document_status {
+  active     [note: '0']
+  archived   [note: '1']
+  deleted    [note: '2 - soft deleted, recoverable']
+}
+
+Enum document_role {
+  owner      [note: '0 - full control; last owner cannot be demoted']
+  editor     [note: '1 - edit + comment + AI']
+  commenter  [note: '2 - view + comment']
+  viewer     [note: '3 - view only']
+}
+
+Enum invitation_status {
+  pending
+  accepted
+  rejected
+  expired
+  revoked
+}
+
+Enum change_origin {
+  user
+  ai
+  system
+  restore
+}
+
+Enum version_change_type {
+  created
+  content_update
+  ai_rewrite
+  restore
+  manual_checkpoint
+}
+
+Enum comment_status {
+  open
+  resolved
+}
+
+Enum lock_type {
+  soft       [note: 'ephemeral - Redis only, never written to this table']
+  hard       [note: 'durable - persisted here and mirrored in Redis']
+}
+
+Enum ai_operation {
+  generate
+  rewrite
+  improve
+  summarize
+  expand
+  shorten
+  fix_grammar
+  change_tone
+  continue_writing
+  ask_document
+}
+
+Enum ai_request_status {
+  succeeded
+  failed
+  cancelled
+  rate_limited
+}
+
+Enum notification_type {
+  comment_mention
+  comment_reply
+  invitation_received
+  invitation_accepted
+  membership_changed
+  document_shared
+  version_restored
+}
+
+
+// ══════════════════════════ 1. IDENTITY & ACCESS ════════════════════════════
+
+Table users {
+  id                uuid          [pk, note: 'uuid v7']
+  email             varchar(320)  [not null, note: 'as typed by the user']
+  normalized_email  varchar(320)  [not null, unique, note: 'UPPER(email) - the real uniqueness key, so identity does not depend on collation settings']
+  display_name      varchar(100)  [not null]
+  password_hash     varchar(255)  [not null, note: 'Argon2id / ASP.NET Identity v3. Never logged (PRD 43).']
+  avatar_url        varchar(2048)
+  is_active         boolean       [not null, default: true]
+  created_at        timestamptz   [not null]
+  updated_at        timestamptz   [not null]
+  last_login_at     timestamptz
+
+  Note: 'PRD 7. The auth principal. Nothing about documents is denormalized here, so a user row never has to change when a document changes.'
+}
+
+Table refresh_tokens {
+  id                    uuid          [pk]
+  user_id               uuid          [not null]
+  token_hash            char(64)      [not null, unique, note: 'SHA-256 of a 256-bit random token. The raw token is never stored (PRD 41).']
+  expires_at            timestamptz   [not null]
+  revoked_at            timestamptz
+  replaced_by_token_id  uuid          [note: 'self FK - makes the rotation chain auditable']
+  created_by_ip         varchar(45)   [note: 'IPv6-safe width']
+  user_agent            varchar(512)
+  created_at            timestamptz   [not null]
+
+  Indexes {
+    (user_id, expires_at) [name: 'ix_refresh_tokens_user_expiry']
+  }
+  Note: 'PRD 41 refresh-token rotation. This replaces a separate UserSessions table: a live session IS a live token row, so session state is never stored in two places.'
+}
+
+
+// ══════════════════════════ 2. DOCUMENTS & SHARING ══════════════════════════
+
+Table documents {
+  id               uuid            [pk]
+  title            varchar(255)    [not null, default: 'Untitled Document']
+  owner_id         uuid            [not null]
+  status           document_status [not null, default: 'active']
+  current_version  int             [not null, default: 0, note: 'DENORMALIZED: equals MAX(document_versions.version_number). Kept so the dashboard does not run an aggregate per row.']
+  created_at       timestamptz     [not null]
+  updated_at       timestamptz     [not null, note: 'bumped by the debounced autosave flush, never per keystroke (PRD 16)']
+  archived_at      timestamptz
+  deleted_at       timestamptz     [note: 'soft delete - EF Core global query filter']
+
+  Indexes {
+    (owner_id, updated_at)  [name: 'ix_documents_owner_recent', note: 'updated_at DESC - the "My Documents" list']
+    (status, updated_at)    [name: 'ix_documents_status_recent']
+    title                   [name: 'ix_documents_title_search', note: 'trigram / full-text index for PRD 8 search']
+  }
+  Note: 'PRD 9. Deliberately has NO content column - durable content lives in document_snapshots + document_changes.'
+}
+
+Table document_members {
+  document_id  uuid           [not null]
+  user_id      uuid           [not null]
+  role         document_role  [not null]
+  added_by     uuid           [not null]
+  added_at     timestamptz    [not null]
+  updated_at   timestamptz    [not null]
+
+  Indexes {
+    (document_id, user_id) [pk, name: 'pk_document_members']
+    (user_id, document_id) [name: 'ix_document_members_by_user', note: 'covers the "Shared with me" list']
+  }
+  Note: 'Resolves the many-to-many between users and documents. Natural composite PK, no surrogate id - a duplicate membership is impossible by construction. The owner also gets an owner row here (controlled duplication of documents.owner_id) so a single query answers every permission check.'
+}
+
+Table document_invitations {
+  id                   uuid               [pk]
+  document_id          uuid               [not null]
+  invited_by           uuid               [not null]
+  email                varchar(320)       [not null, note: 'the invitee may not exist as a user yet - this is exactly why this cannot be folded into document_members']
+  role                 document_role      [not null]
+  token_hash           char(64)           [not null, unique, note: '256-bit random token, hashed before storage (PRD 26)']
+  status               invitation_status  [not null, default: 'pending']
+  expires_at           timestamptz        [not null]
+  accepted_at          timestamptz
+  accepted_by_user_id  uuid               [note: 'set on acceptance - links the emailed invite to the real account']
+  created_at           timestamptz        [not null]
+
+  Indexes {
+    (document_id, email) [name: 'ix_invitations_doc_email', note: 'duplicate-invite check']
+    (status, expires_at) [name: 'ix_invitations_expiry_sweep']
+  }
+  Note: 'PRD 25-26. Single-use: acceptance flips status and writes a document_members row in the same transaction.'
+}
+
+Table document_share_links {
+  id           uuid           [pk]
+  document_id  uuid           [not null]
+  created_by   uuid           [not null]
+  token_hash   char(64)       [not null, unique, note: 'PRD 28 - document ids are NEVER access tokens']
+  role         document_role  [not null, note: 'viewer or editor only - enforced by a CHECK constraint']
+  is_enabled   boolean        [not null, default: true]
+  expires_at   timestamptz
+  created_at   timestamptz    [not null]
+  revoked_at   timestamptz
+  revoked_by   uuid
+
+  Indexes {
+    (document_id, is_enabled) [name: 'ix_share_links_active']
+  }
+  Note: 'Anyone-with-link access. Kept apart from invitations on purpose: an invitation targets one identity, a link targets an unbounded audience - different cardinality, different lifecycle, different revocation semantics.'
+}
+
+
+// ═══════════════════ 3. CRDT STATE, SNAPSHOTS & VERSIONING ══════════════════
+
+Table document_changes {
+  id           bigint         [pk, increment, note: 'monotonic global id - cheap sequential insert']
+  document_id  uuid           [not null]
+  seq          bigint         [not null, note: 'per-document monotonic sequence, allocated at flush time']
+  user_id      uuid           [note: 'NULL for AI or system originated updates']
+  origin       change_origin  [not null, default: 'user']
+  update_blob  bytea          [not null, note: 'opaque Yjs binary update - the server never parses it (PRD 12)']
+  size_bytes   int            [not null]
+  created_at   timestamptz    [not null]
+
+  Indexes {
+    (document_id, seq) [unique, name: 'ux_document_changes_doc_seq']
+  }
+  Note: 'APPEND-ONLY event log. Written in debounced batches, never per keystroke (PRD 16). Rows at or below the latest snapshot seq are prunable. Natural partition key is document_id, or a created_at range once volume grows.'
+}
+
+Table document_snapshots {
+  id            uuid         [pk]
+  document_id   uuid         [not null]
+  up_to_seq     bigint       [not null, note: 'this snapshot equals the replay of every change with seq <= up_to_seq']
+  state_vector  bytea        [not null, note: 'Yjs state vector - lets a reconnecting client ask for only its missing delta']
+  ydoc_state    bytea        [not null, note: 'full encoded Yjs document']
+  size_bytes    int          [not null]
+  created_at    timestamptz  [not null]
+
+  Indexes {
+    (document_id, up_to_seq) [unique, name: 'ux_snapshots_doc_seq']
+  }
+  Note: 'PRD 20. Bounds replay cost: load the latest snapshot plus only the changes after it, instead of replaying thousands of individual updates.'
+}
+
+Table document_versions {
+  id              uuid                 [pk]
+  document_id     uuid                 [not null]
+  version_number  int                  [not null, note: 'gap-free, unique per document']
+  snapshot_id     uuid                 [not null, note: 'every version is reconstructable - this is what makes restore O(1)']
+  change_type     version_change_type  [not null]
+  label           varchar(200)
+  created_by      uuid                 [note: 'NULL when the system auto-checkpoints']
+  created_at      timestamptz          [not null]
+
+  Indexes {
+    (document_id, version_number) [unique, name: 'ux_versions_doc_number']
+    (document_id, created_at)     [name: 'ix_versions_timeline', note: 'revision history panel, PRD 19']
+  }
+  Note: 'PRD 18. A version is a NAMED POINTER at a snapshot, not a second copy of the content. Content is stored exactly once, in document_snapshots.'
+}
+
+Table document_locks {
+  id           uuid         [pk]
+  document_id  uuid         [not null]
+  locked_by    uuid         [not null]
+  lock_type    lock_type    [not null, default: 'hard', note: 'soft locks are ephemeral and live only in Redis']
+  locked_at    timestamptz  [not null]
+  expires_at   timestamptz  [not null, note: 'TTL guarantees a crashed client cannot hold a document hostage']
+  released_at  timestamptz
+
+  Indexes {
+    document_id [unique, name: 'ux_locks_one_active_per_doc', note: 'FILTERED/PARTIAL index: WHERE released_at IS NULL - the database itself guarantees at most one live lock per document']
+  }
+  Note: 'PRD 29. Post-MVP.'
+}
+
+
+// ══════════════════════════ 4. COMMENTS & MENTIONS ══════════════════════════
+
+Table comments {
+  id                 uuid            [pk]
+  document_id        uuid            [not null]
+  parent_comment_id  uuid            [note: 'NULL = thread root, set = reply. CHECK: the parent of a reply must itself be a root, giving one level of nesting like Google Docs.']
+  author_id          uuid            [not null]
+  anchor_id          varchar(200)    [note: 'Yjs relative position - survives concurrent edits where a character offset would not. NULL on replies.']
+  quoted_text        varchar(1000)   [note: 'snapshot of the highlighted text so a resolved thread still reads correctly after the text moves on']
+  body               text            [not null]
+  status             comment_status  [not null, default: 'open']
+  created_at         timestamptz     [not null]
+  updated_at         timestamptz     [not null]
+  edited_at          timestamptz
+  deleted_at         timestamptz
+  resolved_by        uuid
+  resolved_at        timestamptz
+
+  Indexes {
+    (document_id, status, created_at) [name: 'ix_comments_doc_open']
+    (parent_comment_id, created_at)   [name: 'ix_comments_thread']
+  }
+  Note: 'NORMALIZATION CHANGE vs PRD 36: Comments and CommentReplies are merged into ONE table with a self-referencing parent. A reply carries identical attributes to a comment (author, body, edit, delete, mention), so two tables would duplicate every column and every rule. Self-reference = adjacency list, 3NF clean.'
+}
+
+Table comment_mentions {
+  comment_id         uuid         [not null]
+  mentioned_user_id  uuid         [not null]
+  created_at         timestamptz  [not null]
+  notified_at        timestamptz
+
+  Indexes {
+    (comment_id, mentioned_user_id) [pk, name: 'pk_comment_mentions']
+    mentioned_user_id               [name: 'ix_mentions_by_user']
+  }
+  Note: 'PRD 23. 1NF/4NF: one comment can mention many users, so mentions are rows - never a comma-separated column on comments.'
+}
+
+
+// ═════════════════════ 5. AI, NOTIFICATIONS & AUDIT ═════════════════════════
+
+Table ai_requests {
+  id                 uuid               [pk]
+  user_id            uuid               [not null]
+  document_id        uuid               [note: 'NULL for document-less generation']
+  operation          ai_operation       [not null]
+  provider           varchar(50)        [not null, note: 'matches Ai:Provider in appsettings - Gemini / OpenAI / Ollama']
+  model              varchar(100)       [not null]
+  prompt_tokens      int
+  completion_tokens  int
+  duration_ms        int
+  status             ai_request_status  [not null]
+  error_code         varchar(60)
+  created_at         timestamptz        [not null]
+
+  Indexes {
+    (user_id, created_at)     [name: 'ix_ai_requests_quota', note: 'per-user rate limiting and quota windows']
+    (document_id, created_at) [name: 'ix_ai_requests_by_doc']
+  }
+  Note: 'PRD 32: metadata ONLY. No prompt text and no document content - accepted AI output re-enters the system as a Yjs transaction, never as a direct SQL write.'
+}
+
+Table notifications {
+  id           uuid               [pk]
+  user_id      uuid               [not null, note: 'recipient']
+  type         notification_type  [not null]
+  title        varchar(200)       [not null]
+  body         varchar(1000)
+  document_id  uuid
+  ref_id       uuid               [note: 'polymorphic pointer (comment / invitation / member). Intentionally NOT a FK - type tells you how to read it.']
+  is_read      boolean            [not null, default: false]
+  read_at      timestamptz
+  created_at   timestamptz        [not null]
+
+  Indexes {
+    (user_id, is_read, created_at) [name: 'ix_notifications_inbox', note: 'unread badge count in a single index-only scan']
+  }
+}
+
+Table audit_logs {
+  id             bigint       [pk, increment]
+  actor_user_id  uuid         [note: 'NULL for system originated events']
+  event_type     varchar(60)  [not null, note: 'the PRD 43 catalogue: user.login, document.opened, document.changed, version.created, permission.changed, invitation.created, ai.request, lock.acquired, ...']
+  document_id    uuid
+  entity_type    varchar(60)
+  entity_id      uuid
+  ip_address     varchar(45)
+  user_agent     varchar(512)
+  metadata       jsonb        [note: 'event-shaped extras. Deliberately schemaless: audit rows are write-once and read rarely, so a column per event type would be pure schema churn.']
+  created_at     timestamptz  [not null]
+
+  Indexes {
+    (document_id, created_at)   [name: 'ix_audit_by_document']
+    (actor_user_id, created_at) [name: 'ix_audit_by_actor']
+    (event_type, created_at)    [name: 'ix_audit_by_event']
+  }
+  Note: 'PRD 43. Append-only, written asynchronously - an audit failure must never fail the primary operation. Never stores passwords, tokens or document content.'
+}
+
+
+// ══════════════════════════════ RELATIONSHIPS ═══════════════════════════════
+
+// Identity
+Ref: refresh_tokens.user_id                   > users.id               [delete: cascade]
+Ref: refresh_tokens.replaced_by_token_id      - refresh_tokens.id      [delete: set null]
+
+// Documents & sharing
+Ref: documents.owner_id                       > users.id               [delete: restrict]
+Ref: document_members.document_id             > documents.id           [delete: cascade]
+Ref: document_members.user_id                 > users.id               [delete: cascade]
+Ref: document_members.added_by                > users.id               [delete: restrict]
+Ref: document_invitations.document_id         > documents.id           [delete: cascade]
+Ref: document_invitations.invited_by          > users.id               [delete: restrict]
+Ref: document_invitations.accepted_by_user_id > users.id               [delete: set null]
+Ref: document_share_links.document_id         > documents.id           [delete: cascade]
+Ref: document_share_links.created_by          > users.id               [delete: restrict]
+Ref: document_share_links.revoked_by          > users.id               [delete: set null]
+
+// CRDT state & versioning
+Ref: document_changes.document_id             > documents.id           [delete: cascade]
+Ref: document_changes.user_id                 > users.id               [delete: set null]
+Ref: document_snapshots.document_id           > documents.id           [delete: cascade]
+Ref: document_versions.document_id            > documents.id           [delete: cascade]
+Ref: document_versions.snapshot_id            > document_snapshots.id  [delete: restrict]
+Ref: document_versions.created_by             > users.id               [delete: set null]
+Ref: document_locks.document_id               > documents.id           [delete: cascade]
+Ref: document_locks.locked_by                 > users.id               [delete: cascade]
+
+// Comments
+Ref: comments.document_id                     > documents.id           [delete: cascade]
+Ref: comments.parent_comment_id               - comments.id            [delete: cascade]
+Ref: comments.author_id                       > users.id               [delete: restrict]
+Ref: comments.resolved_by                     > users.id               [delete: set null]
+Ref: comment_mentions.comment_id              > comments.id            [delete: cascade]
+Ref: comment_mentions.mentioned_user_id       > users.id               [delete: cascade]
+
+// AI, notifications, audit
+Ref: ai_requests.user_id                      > users.id               [delete: cascade]
+Ref: ai_requests.document_id                  > documents.id           [delete: set null]
+Ref: notifications.user_id                    > users.id               [delete: cascade]
+Ref: notifications.document_id                > documents.id           [delete: cascade]
+Ref: audit_logs.actor_user_id                 > users.id               [delete: set null]
+Ref: audit_logs.document_id                   > documents.id           [delete: set null]
+
+
+// ═══════════════════════════════ TABLE GROUPS ═══════════════════════════════
+
+TableGroup "1 - Identity & Access" {
+  users
+  refresh_tokens
+}
+
+TableGroup "2 - Documents & Sharing" {
+  documents
+  document_members
+  document_invitations
+  document_share_links
+}
+
+TableGroup "3 - CRDT State & Versioning" {
+  document_changes
+  document_snapshots
+  document_versions
+  document_locks
+}
+
+TableGroup "4 - Comments" {
+  comments
+  comment_mentions
+}
+
+TableGroup "5 - AI, Notifications & Audit" {
+  ai_requests
+  notifications
+  audit_logs
+}
+
+
+// ═════════════ NOT IN SQL - Redis owns this state (PRD 14 and 38) ═══════════
+//
+//   presence:doc:{documentId}           HASH    userId -> name, color, activity, lastSeen
+//   awareness:doc:{documentId}          HASH    ephemeral cursor / selection payloads
+//   connections:user:{userId}           SET     SignalR connection ids
+//   lock:soft:doc:{documentId}:{block}  STRING  short TTL, informational only
+//   buffer:doc:{documentId}             LIST    pending Yjs updates awaiting flush
+//   signalr backplane channels
+//
+//   Rule of thumb: anything whose lifetime is measured in seconds never
+//   becomes a table. SQL stays the durable source of truth (PRD 38).
+// ============================================================================

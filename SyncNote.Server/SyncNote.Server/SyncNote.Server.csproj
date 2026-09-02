@@ -12,6 +12,11 @@
   </ItemGroup>
 
   <ItemGroup>
+    <ProjectReference Include="..\SyncNote.Repository\SyncNote.Repository.csproj" />
+    <ProjectReference Include="..\SyncNote.Service\SyncNote.Service.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
     <Folder Include="Controllers\" />
   </ItemGroup>
 

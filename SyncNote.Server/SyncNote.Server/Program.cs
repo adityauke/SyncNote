@@ -1,3 +1,5 @@
+using SyncNote.Repository;
+
 var builder = WebApplication.CreateBuilder(args);
 
 var configuration = builder.Configuration;
@@ -24,6 +26,8 @@ if (!aiProvider.Exists() || string.IsNullOrWhiteSpace(aiProvider["Model"]))
     throw new InvalidOperationException(
         $"Ai:Provider '{aiProviderName}' was not found under Ai:Providers, or its Model is missing.");
 }
+
+builder.Services.AddSyncNotePersistence(configuration);
 
 builder.Services.AddControllers();
 builder.Services.AddOpenApi();
